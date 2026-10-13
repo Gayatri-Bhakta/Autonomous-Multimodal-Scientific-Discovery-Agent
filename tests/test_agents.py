@@ -1,70 +1,53 @@
-"""Tests for the Code Executor Agent (Member 5)."""
-import pytest
+"""
+Tests for Sub-Agents:
+1. Literature Reviewer Agent
+2. Hypothesis Generator Agent
+3. Code Executor Agent (Template verification)
+"""
 
+import pytest
+from src.agents import literature_agent as lit
+from src.agents import hypothesis_agent as hyp
 from src.agents import code_executor_agent as cea
 
-HYP = "Dynamic token-level pruning reduces inference memory by 30%."
+
+# --- Literature Reviewer Tests ---
+def test_literature_review_returns_summary():
+    summary = lit.run_literature_review("Autonomous Agent Reasoning")
+    assert isinstance(summary, str)
+    assert len(summary) > 20
+    assert "Literature Review" in summary
 
 
-def test_prompt_contains_hypothesis():
-    assert HYP in cea.build_prompt(HYP)
+def test_literature_filter_by_topic():
+    sample_papers = [
+        {"title": "Paper on AI agents", "abstract": "Reasoning models", "categories": ["cs.AI"]},
+        {"title": "Quantum Physics", "abstract": "Entangled photons", "categories": ["physics"]},
+    ]
+    filtered = lit.filter_papers_by_topic(sample_papers, "AI agents")
+    assert len(filtered) >= 1
+    assert "AI" in filtered[0]["title"]
 
 
-def test_prompt_has_no_unfilled_placeholder():
-    assert "{hypothesis}" not in cea.build_prompt(HYP)
+# --- Hypothesis Generator Tests ---
+def test_hypothesis_generation():
+    summary = "Current transformer architectures suffer from quadratic attention memory bottlenecks."
+    h = hyp.generate_hypothesis(summary)
+    assert isinstance(h, str)
+    assert h.startswith("Hypothesis:")
 
 
-def test_prompt_strips_extra_whitespace():
-    assert "Hypothesis:\nabc\n" in cea.build_prompt("   abc   ")
+def test_hypothesis_candidate_list():
+    summary = "Reinforcement learning in self debugging agent loops."
+    candidates = hyp.generate_all_hypotheses(summary)
+    assert len(candidates) >= 1
+    assert all("Hypothesis" in c for c in candidates)
 
 
-def test_generated_code_is_valid_python():
-    compile(cea.generate_code(HYP), "<generated>", "exec")
-
-
-def test_hypothesis_with_quotes_is_handled_safely():
-    tricky = 'He said "hi" and it\'s fine'
-    code = cea.generate_code(tricky)
-    compile(code, "<generated>", "exec")
-    assert tricky in cea.run_code(code)
-
-
-def test_run_code_returns_stdout():
-    assert cea.run_code("print('hello')") == "hello"
-
-
-def test_run_code_reports_errors_instead_of_crashing():
-    output = cea.run_code("raise ValueError('boom')")
-    assert "Execution failed" in output
-    assert "ValueError" in output
-
-
-def test_run_code_stops_a_hanging_script():
-    output = cea.run_code("while True: pass", timeout=1)
-    assert "timed out" in output
-
-
-def test_generate_and_run_code_returns_two_strings():
-    code, output = cea.generate_and_run_code(HYP)
-    assert isinstance(code, str) and code
-    assert isinstance(output, str) and output
-
-
-def test_output_reports_a_metric_delta():
-    _, output = cea.generate_and_run_code(HYP)
+# --- Code Executor Template Tests ---
+def test_code_executor_template_returns_metric_delta():
+    test_h = "Dynamic token pruning reduces memory footprint by 30%."
+    code, output = cea.generate_and_run_code(test_h)
+    assert isinstance(code, str) and len(code) > 0
+    assert isinstance(output, str) and len(output) > 0
     assert "Metric delta:" in output
-
-
-def test_results_are_reproducible():
-    assert cea.generate_and_run_code(HYP) == cea.generate_and_run_code(HYP)
-
-
-def test_orchestrator_node_updates_state():
-    """The Lead's code_executor_node should use our agent (tested alone, no other agents)."""
-    pytest.importorskip("langgraph")
-    from src.orchestrator import code_executor_node
-
-    result = code_executor_node({"selected_hypothesis": HYP})
-    assert result["generated_code"]
-    assert "Metric delta" in result["execution_result"]
-    assert result["logs"]

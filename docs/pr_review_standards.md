@@ -34,4 +34,4 @@
 4. Tick **Require approvals** (set to 1).
 5. Save the rule.
 
-The PR template is `docs/pull_request_template.md`. GitHub also picks up templates from the `docs/` folder, so no new folder is needed.
+The PR template is `.github/pull_request_template.md` (GitHub fills it in automatically for every new Pull Request).

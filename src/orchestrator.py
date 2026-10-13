@@ -5,9 +5,16 @@ Coordinates: Literature Reviewer -> Hypothesis Generator -> Code Executor
 """
 
 import operator
+import sys
+from pathlib import Path
 from typing import Annotated, Dict, Any, List
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
+
+# Ensure repository root is on sys.path for direct script execution
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 # State Schema for Agent Communication

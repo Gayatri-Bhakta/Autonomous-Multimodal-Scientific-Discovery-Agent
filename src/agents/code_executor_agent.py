@@ -57,7 +57,7 @@ def run_trial(use_method):
 baseline = [run_trial(False) for _ in range(N_TRIALS)]
 method = [run_trial(True) for _ in range(N_TRIALS)]
 
-print("Hypothesis:", HYPOTHESIS)
+print(HYPOTHESIS)
 print("Baseline mean:", round(statistics.mean(baseline), 3))
 print("Method mean:", round(statistics.mean(method), 3))
 print("Metric delta:", round(statistics.mean(method) - statistics.mean(baseline), 3))
