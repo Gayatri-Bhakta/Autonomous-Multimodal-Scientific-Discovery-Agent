@@ -1,11 +1,40 @@
-"""Sub-agent implementations for scientific discovery."""
+"""Agents package for the Autonomous Multimodal Scientific Discovery Agent.
 
-from src.agents.literature_agent import run_literature_review
-from src.agents.hypothesis_agent import generate_hypothesis
-from src.agents.code_executor_agent import generate_and_run_code
+The main classes are exported lazily (PEP 562). This has two benefits:
 
-__all__ = [
-    "run_literature_review",
-    "generate_hypothesis",
-    "generate_and_run_code",
-]
+* No circular imports: the three agent modules never import each other, and
+  this package does not import them until a name is actually requested.
+* ``python -m agents.literature_reviewer`` runs without the "module found in
+  sys.modules" RuntimeWarning.
+
+Usage::
+
+    from agents import LiteratureReviewer, HypothesisGenerator, CodeExecutor
+"""
+
+from __future__ import annotations
+
+import importlib
+from typing import TYPE_CHECKING, Any
+
+__all__ = ["LiteratureReviewer", "HypothesisGenerator", "CodeExecutor"]
+
+# Maps each exported name to the sub-module that defines it.
+_EXPORTS = {
+    "LiteratureReviewer": ".literature_reviewer",
+    "HypothesisGenerator": ".hypothesis_generator",
+    "CodeExecutor": ".code_executor",
+}
+
+if TYPE_CHECKING:  # Only for type checkers / IDE auto-complete.
+    from .code_executor import CodeExecutor
+    from .hypothesis_generator import HypothesisGenerator
+    from .literature_reviewer import LiteratureReviewer
+
+
+def __getattr__(name: str) -> Any:
+    """Import an agent class on first access."""
+    if name in _EXPORTS:
+        module = importlib.import_module(_EXPORTS[name], __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
