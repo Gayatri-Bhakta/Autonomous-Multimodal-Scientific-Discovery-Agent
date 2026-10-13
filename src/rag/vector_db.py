@@ -1,121 +1,164 @@
-"""
-Scientific Vector Database Store
-Member 4 Deliverable (Data Ingestion & Vector DB Integration)
-
-Provides semantic embedding storage and similarity search for scientific papers
-ingested from arXiv and PubMed APIs.
-Supports ChromaDB with in-memory semantic fallback for resilient local testing.
-"""
-
-from __future__ import annotations
-
+import hashlib
 import json
-import math
-import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PAPERS_FILE = PROJECT_ROOT / "data" / "sample_papers.json"
+VECTOR_STORE_DIR = PROJECT_ROOT / "data" / "vector_store"
+
+COLLECTION_NAME = "scientific_papers"
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=150,
+)
+
+_collection = None
+
+
+def get_collection():
+    """Open or create the persistent ChromaDB collection."""
+    global _collection
+
+    if _collection is None:
+        VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+
+        client = chromadb.PersistentClient(path=str(VECTOR_STORE_DIR))
+        embedding_function = SentenceTransformerEmbeddingFunction(
+            model_name=MODEL_NAME
+        )
+
+        _collection = client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            embedding_function=embedding_function,
+        )
+
+    return _collection
+
+
+def add_papers(papers: list[dict[str, Any]]) -> int:
+    """Split papers into chunks and store them in ChromaDB."""
+    ids = []
+    documents = []
+    metadatas = []
+
+    for paper in papers:
+        paper_id = str(paper.get("paper_id") or paper.get("source_id") or "")
+        title = str(paper.get("title") or "").strip()
+        abstract = str(paper.get("abstract") or "").strip()
+
+        text = f"{title}\n\n{abstract}".strip()
+        if not paper_id or not text:
+            continue
+
+        chunks = _splitter.split_text(text)
+
+        for chunk_number, chunk in enumerate(chunks):
+            chunk_id = hashlib.sha256(
+                f"{paper_id}:{chunk_number}".encode("utf-8")
+            ).hexdigest()
+
+            ids.append(chunk_id)
+            documents.append(chunk)
+            metadatas.append(
+                {
+                    "paper_id": paper_id,
+                    "title": title,
+                    "source": str(paper.get("source") or "unknown"),
+                    "authors": ", ".join(paper.get("authors") or []),
+                    "published_date": str(paper.get("published_date") or ""),
+                    "url": str(paper.get("url") or ""),
+                    "categories": ", ".join(paper.get("categories") or []),
+                    "chunk_number": chunk_number,
+                }
+            )
+
+    if ids:
+        get_collection().upsert(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas,
+        )
+
+    return len(ids)
+
+
+def load_papers_from_json(json_path: Path = PAPERS_FILE) -> int:
+    """Read Member 3's paper list from a JSON file and store it."""
+    with json_path.open("r", encoding="utf-8") as file:
+        papers = json.load(file)
+
+    if not isinstance(papers, list):
+        raise ValueError("The papers JSON file must contain a list of papers.")
+
+    return add_papers(papers)
+
+
+def query_papers(query_text: str, top_k: int = 5) -> list[dict[str, Any]]:
+    """Return the most relevant paper chunks for a search query."""
+    if not query_text.strip():
+        return []
+    if top_k < 1:
+        raise ValueError("top_k must be at least 1")
+
+    collection = get_collection()
+    if collection.count() == 0:
+        return []
+
+    matches = collection.query(
+        query_texts=[query_text],
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"],
+    )
+
+    results = []
+    for document, metadata, distance in zip(
+        matches["documents"][0],
+        matches["metadatas"][0],
+        matches["distances"][0],
+    ):
+        results.append(
+            {
+                "text": document,
+                "metadata": metadata,
+                "distance": distance,
+            }
+        )
+
+    return results
 
 class ScientificVectorDB:
-    """
-    Vector Database wrapper for storing scientific papers and querying
-    relevant research by semantic similarity.
-    """
+    """Class interface used by the rest of the project."""
 
-    def __init__(self, collection_name: str = "scientific_papers", persist_directory: Optional[str] = None):
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
-        self._papers: List[Dict[str, Any]] = []
-        self._chroma_client = None
-        self._chroma_collection = None
+    def __init__(self):
+        self.collection = get_collection()
 
-    def add_papers(self, papers: List[Dict[str, Any]]) -> int:
-        """Add a list of paper dictionaries or objects to the vector store."""
-        added = 0
-        existing_ids = {p.get("paper_id") for p in self._papers}
+    def add_papers(self, papers: list[dict[str, Any]]) -> int:
+        return add_papers(papers)
 
-        for paper in papers:
-            paper_id = paper.get("paper_id") or paper.get("source_id", f"paper_{len(self._papers) + 1}")
-            if paper_id in existing_ids:
-                continue
-
-            entry = {
-                "paper_id": paper_id,
-                "title": paper.get("title", ""),
-                "abstract": paper.get("abstract", ""),
-                "authors": paper.get("authors", []),
-                "source": paper.get("source", "unknown"),
-                "url": paper.get("url", ""),
-                "categories": paper.get("categories", []),
-                "published_date": paper.get("published_date", "")
-            }
-            self._papers.append(entry)
-            existing_ids.add(paper_id)
-            added += 1
-
-        return added
-
-    def load_from_json(self, json_path: str = "data/sample_papers.json") -> int:
-        """Load papers from a JSON file into the vector database."""
-        path = Path(json_path)
-        if not path.exists():
-            return 0
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, list):
-            return self.add_papers(data)
-        return 0
+    def load_from_json(self, json_path: str = str(PAPERS_FILE)) -> int:
+        return load_papers_from_json(Path(json_path))
 
     def count(self) -> int:
-        """Return total number of papers stored in the vector database."""
-        return len(self._papers)
+        return self.collection.count()
 
-    def _tokenize(self, text: str) -> List[str]:
-        """Simple tokenizer for similarity scoring."""
-        return re.findall(r"\b\w{3,}\b", text.lower())
-
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """
-        Search for papers most relevant to the query text.
-        Returns top_k paper dictionaries with relevance scores.
-        """
-        if not self._papers:
-            return []
-
-        query_tokens = set(self._tokenize(query))
-        if not query_tokens:
-            return self._papers[:top_k]
-
-        scored: List[Tuple[float, Dict[str, Any]]] = []
-        for paper in self._papers:
-            text = f"{paper['title']} {paper['abstract']} {' '.join(paper['categories'])}"
-            doc_tokens = self._tokenize(text)
-            if not doc_tokens:
-                continue
-
-            # Compute term overlap score with title boost
-            title_tokens = set(self._tokenize(paper["title"]))
-            title_overlap = len(query_tokens.intersection(title_tokens)) * 2.5
-            abstract_overlap = len(query_tokens.intersection(set(doc_tokens)))
-
-            score = (title_overlap + abstract_overlap) / (math.log(len(doc_tokens) + 10))
-            scored.append((score, paper))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        for score, paper in scored[:top_k]:
-            result_item = dict(paper)
-            result_item["similarity_score"] = round(score, 4)
-            results.append(result_item)
-
-        return results
+    def search(
+        self, query: str, top_k: int = 5
+    ) -> list[dict[str, Any]]:
+        return query_papers(query, top_k)
 
 
 if __name__ == "__main__":
-    db = ScientificVectorDB()
-    count = db.load_from_json()
-    print(f"Loaded {count} papers into ScientificVectorDB.")
-    results = db.search("AI time horizons and benchmarks", top_k=2)
-    print("Search results:")
-    for r in results:
-        print(f" - [{r['similarity_score']}] {r['title']} ({r['paper_id']})")
+    chunk_count = load_papers_from_json()
+    print(f"Stored {chunk_count} paper chunks.")
+
+    for result in query_papers("AI time horizons and benchmarks", top_k=3):
+        print(f"\nTitle: {result['metadata']['title']}")
+        print(result["text"])
