@@ -28,8 +28,8 @@ _EXPORTS = {
 
 if TYPE_CHECKING:  # Only for type checkers / IDE auto-complete.
     from .code_executor import CodeExecutor
-    from .hypothesis_generator import HypothesisGenerator
-    from .literature_reviewer import LiteratureReviewer
+    from .hypothesis_agent import HypothesisGenerator
+    from .literature_agent import LiteratureReviewer
 
 
 def __getattr__(name: str) -> Any:
