@@ -1,15 +1,7 @@
 """Agents package for the Autonomous Multimodal Scientific Discovery Agent.
 
-The main classes are exported lazily (PEP 562). This has two benefits:
-
-* No circular imports: the three agent modules never import each other, and
-  this package does not import them until a name is actually requested.
-* ``python -m agents.literature_reviewer`` runs without the "module found in
-  sys.modules" RuntimeWarning.
-
-Usage::
-
-    from agents import LiteratureReviewer, HypothesisGenerator, CodeExecutor
+Agent classes and functions are imported lazily to reduce circular imports
+and avoid unnecessary module loading.
 """
 
 from __future__ import annotations
@@ -17,24 +9,60 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any
 
-__all__ = ["LiteratureReviewer", "HypothesisGenerator", "CodeExecutor"]
+__all__ = [
+    "LiteratureReviewer",
+    "HypothesisGenerator",
+    "CodeExecutor",
+    "run_literature_review",
+    "filter_papers_by_topic",
+    "generate_hypothesis",
+    "generate_all_hypotheses",
+    "generate_and_run_code",
+]
 
-# Maps each exported name to the sub-module that defines it.
 _EXPORTS = {
-    "LiteratureReviewer": ".literature_reviewer",
-    "HypothesisGenerator": ".hypothesis_generator",
-    "CodeExecutor": ".code_executor",
+    "LiteratureReviewer": ".literature_agent",
+    "run_literature_review": ".literature_agent",
+    "filter_papers_by_topic": ".literature_agent",
+    "HypothesisGenerator": ".hypothesis_agent",
+    "generate_hypothesis": ".hypothesis_agent",
+    "generate_all_hypotheses": ".hypothesis_agent",
+    "CodeExecutor": ".code_executor_agent",
+    "generate_and_run_code": ".code_executor_agent",
 }
 
-if TYPE_CHECKING:  # Only for type checkers / IDE auto-complete.
-    from .code_executor import CodeExecutor
-    from .hypothesis_agent import HypothesisGenerator
-    from .literature_agent import LiteratureReviewer
+if TYPE_CHECKING:
+    from .literature_agent import (
+        LiteratureReviewer,
+        run_literature_review,
+        filter_papers_by_topic,
+    )
+    from .hypothesis_agent import (
+        HypothesisGenerator,
+        generate_hypothesis,
+        generate_all_hypotheses,
+    )
+    from .code_executor_agent import (
+        CodeExecutor,
+        generate_and_run_code,
+    )
 
 
 def __getattr__(name: str) -> Any:
-    """Import an agent class on first access."""
-    if name in _EXPORTS:
-        module = importlib.import_module(_EXPORTS[name], __name__)
-        return getattr(module, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    """Import an exported agent class or function on first access."""
+    if name not in _EXPORTS:
+        raise AttributeError(
+            f"module {__name__!r} has no attribute {name!r}"
+        )
+
+    module = importlib.import_module(_EXPORTS[name], __name__)
+    value = getattr(module, name)
+
+    # Cache the resolved attribute to avoid repeated imports/lookups.
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Include lazy exports in module introspection."""
+    return sorted(set(globals()) | set(__all__))

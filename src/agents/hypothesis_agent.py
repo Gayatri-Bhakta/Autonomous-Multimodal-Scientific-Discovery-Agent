@@ -409,3 +409,63 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+def generate_hypothesis(literature_summary: str) -> str:
+    """Generate one hypothesis from a literature summary."""
+    summary = (literature_summary or "").strip()
+
+    if not summary:
+        return "Insufficient evidence: literature summary is empty."
+
+    generator = HypothesisGenerator()
+
+    report = generator.generate({
+        "topic": "Scientific Discovery",
+        "analysis": {
+            "research_gaps": [
+                {
+                    "text": summary[:200],
+                    "source_ids": []
+                }
+            ]
+        }
+    })
+
+    hypotheses = report.ai_generated_hypotheses
+
+    if hypotheses:
+        return f"Hypothesis: {hypotheses[0].statement}"
+
+    return (
+        "Insufficient evidence to generate a hypothesis. "
+        "Please provide a research gap or limitation."
+    )
+
+
+def generate_all_hypotheses(literature_summary: str) -> list[str]:
+    """Generate all hypotheses available from the supplied summary."""
+    summary = (literature_summary or "").strip()
+
+    if not summary:
+        return []
+
+    generator = HypothesisGenerator()
+
+    report = generator.generate({
+        "topic": "Scientific Discovery",
+        "analysis": {
+            "research_gaps": [
+                {
+                    "text": summary[:200],
+                    "source_ids": []
+                }
+            ]
+        }
+    })
+
+    return [
+        f"Hypothesis: {hypothesis.statement}"
+        for hypothesis in report.ai_generated_hypotheses
+    ]
