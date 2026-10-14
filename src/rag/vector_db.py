@@ -61,6 +61,15 @@ class LocalHashEmbeddingFunction:
 
         return vectors
 
+    def name(self) -> str:
+        return "local_hash"
+
+    def embed_query(self, input: list[str]) -> list[list[float]]:
+        return self(input)
+
+    def embed_documents(self, input: list[str]) -> list[list[float]]:
+        return self(input)
+
 
 def _get_embedding_function():
     """Create the pretrained embedder, or use a deterministic offline fallback."""
