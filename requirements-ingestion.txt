@@ -1,0 +1,5 @@
+# Member 3 — add these lines to the team's requirements.txt
+arxiv>=2.1
+biopython>=1.83
+python-dotenv>=1.0
+pytest>=8.0
