@@ -108,6 +108,13 @@ def generate_and_run_code(hypothesis: str) -> Tuple[str, str]:
     output = run_code(code)
     return code, output
 
+class CodeExecutor:
+    """Convenience class wrapper for generate_and_run_code."""
+
+    @staticmethod
+    def run(hypothesis: str) -> Tuple[str, str]:
+        return generate_and_run_code(hypothesis)
+
 
 if __name__ == "__main__":
     demo = "Dynamic token-level pruning reduces inference memory by 30% with <1% perplexity loss."
