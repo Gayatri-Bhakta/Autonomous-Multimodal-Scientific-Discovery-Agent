@@ -64,3 +64,11 @@ def test_vector_db_load_from_sample_json(db):
     count = db.load_from_json("data/sample_papers.json")
     assert count == 30  # chunks stored from the 10 sample papers
     assert db.count() == 10  # distinct papers stored
+    
+def test_search_handles_invalid_input(tmp_path):
+    db = ScientificVectorDB(persist_directory=tmp_path)
+
+    assert db.search("   ") == []
+
+    with pytest.raises(ValueError, match="top_k must be at least 1"):
+        db.search("science", top_k=0)
