@@ -8,3 +8,5 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 langchain-text-splitters
 sentence-transformers
+biopython>=1.83
+docker>=7.0.0
