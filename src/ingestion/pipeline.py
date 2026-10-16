@@ -10,6 +10,9 @@ Usage (from repo root):
 
     # incremental: only papers published since the last run and not seen before
     python -m src.ingestion.pipeline --incremental --out data/new_papers.json
+
+Every run also writes a timestamped snapshot to data/raw/ (disable with --no-snapshot),
+e.g. data/raw/papers_2026-10-13_183000.json, so there is a history of each run.
 """
 
 from __future__ import annotations
@@ -27,12 +30,33 @@ from src.ingestion.state import DEFAULT_STATE_PATH, IngestionState
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_RAW_DIR = Path("data/raw")
+
 
 def resolve_start_date(today: date, days: int, state: Optional[IngestionState]) -> date:
     """Incremental runs start from the last run date; otherwise `days` back."""
     if state is not None and state.last_run is not None:
         return state.last_run
     return today - timedelta(days=days)
+
+
+def snapshot_path(raw_dir: Path | str, when: datetime) -> Path:
+    """data/raw/papers_YYYY-MM-DD_HHMMSS.json (UTC) for one pipeline run."""
+    return Path(raw_dir) / f"papers_{when.strftime('%Y-%m-%d_%H%M%S')}.json"
+
+
+def save_snapshot(papers: List[Paper], raw_dir: Path | str = DEFAULT_RAW_DIR,
+                  when: Optional[datetime] = None) -> Path:
+    """Save this run's papers to a new dated file; never overwrites an older run."""
+    when = when or datetime.now(timezone.utc)
+    path = snapshot_path(raw_dir, when)
+    n = 1
+    while path.exists():                       # two runs in the same second
+        path = path.with_name(f"{path.stem}_{n}.json")
+        n += 1
+    save_papers(papers, path)
+    logger.info("Snapshot: %d papers -> %s", len(papers), path)
+    return path
 
 
 def run_ingestion(
@@ -77,6 +101,10 @@ def main() -> None:
                     help="only return papers not seen in earlier runs")
     ap.add_argument("--state", default=str(DEFAULT_STATE_PATH))
     ap.add_argument("--out", default="data/sample_scraped_papers.json")
+    ap.add_argument("--raw-dir", default=str(DEFAULT_RAW_DIR),
+                    help="folder for dated snapshots of each run")
+    ap.add_argument("--no-snapshot", action="store_true",
+                    help="do not write a dated snapshot to --raw-dir")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -85,6 +113,9 @@ def main() -> None:
                            incremental=args.incremental, state_path=args.state)
     path = save_papers(papers, args.out)
     print(f"Saved {len(papers)} papers -> {path}")
+    if not args.no_snapshot:
+        snap = save_snapshot(papers, args.raw_dir)
+        print(f"Snapshot          -> {snap}")
 
 
 if __name__ == "__main__":
