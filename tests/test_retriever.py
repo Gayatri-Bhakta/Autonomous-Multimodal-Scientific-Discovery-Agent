@@ -17,6 +17,7 @@ from src.rag.retriever import (
     format_context,
     get_relevant_literature,
     matches_filters,
+    retrieve_for_hypothesis,
     split_list,
     strip_title,
     to_cosine,
@@ -201,6 +202,17 @@ def test_valid_paper_ids_for_citation_checks(retriever):
     assert valid_paper_ids(hits)[0] == "mock:drug"
 
 
+def test_long_paper_snippet_is_never_empty(tmp_path):
+    long_abstract = ("Antimicrobial resistance is rising worldwide. " * 30).strip()
+    store = ScientificVectorDB(collection_name="long_paper", persist_directory=tmp_path)
+    store.add_papers([{"paper_id": "mock:long", "source": "pubmed",
+                       "published_date": "2026-01-01", "authors": ["A. Author"],
+                       "title": "Antimicrobial Resistance Review", "abstract": long_abstract}])
+    assert store.collection.count() > 1            # title chunk + abstract chunks
+    hit = LiteratureRetriever(store).retrieve("antimicrobial resistance review", top_k=1)[0]
+    assert hit["snippet"].startswith("Antimicrobial resistance is rising")
+
+
 def test_helpers():
     assert split_list("cs.AI, cs.LG") == ["cs.AI", "cs.LG"]
     assert split_list(["a", " b "]) == ["a", "b"]
@@ -212,6 +224,14 @@ def test_get_relevant_literature_signature(monkeypatch, db):
     monkeypatch.setattr(R, "_default_retriever", LiteratureRetriever(db))
     hits = get_relevant_literature("legged robot locomotion", top_k=5)
     assert isinstance(hits, list) and hits[0]["paper_id"] == "mock:robotics"
+
+
+def test_retrieve_for_hypothesis_bundle(monkeypatch, db):
+    monkeypatch.setattr(R, "_default_retriever", LiteratureRetriever(db))
+    bundle = retrieve_for_hypothesis("graph neural network drug binding affinity", top_k=2)
+    assert set(bundle) == {"topic", "context", "valid_paper_ids", "papers"}
+    assert bundle["valid_paper_ids"][0] == "mock:drug"
+    assert "ID: mock:drug" in bundle["context"]
 
 
 def test_works_on_real_sample_papers(tmp_path):

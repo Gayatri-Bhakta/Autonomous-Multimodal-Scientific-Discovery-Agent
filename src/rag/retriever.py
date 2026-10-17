@@ -163,6 +163,24 @@ class LiteratureRetriever:
         n = total_chunks if filtered else min(total_chunks, max(MIN_CANDIDATES, top_k * 4))
         return self.db.search(topic, top_k=n)
 
+    def _first_body_chunk(self, paper_id: str, title: str) -> str:
+        """
+        Long papers are stored as a title-only chunk plus abstract chunks. If the
+        query matched only the title chunk, use the paper's first abstract chunk.
+        """
+        try:
+            got = self.db.collection.get(where={"paper_id": paper_id},
+                                         include=["documents", "metadatas"])
+        except Exception:
+            return ""
+        pairs = sorted(zip(got.get("documents") or [], got.get("metadatas") or []),
+                       key=lambda dm: (dm[1] or {}).get("chunk_number", 0))
+        for doc, _ in pairs:
+            body = strip_title(doc, title)
+            if body:
+                return body
+        return ""
+
     def retrieve(
         self,
         topic: str,
@@ -178,7 +196,7 @@ class LiteratureRetriever:
         threshold = self.min_score if min_score is None else min_score
         filtered = any(f for f in (year_from, year_to, categories, sources))
 
-        best: Dict[str, Dict[str, Any]] = {}       # paper_id -> best chunk
+        best: Dict[str, Dict[str, Any]] = {}       # paper_id -> best score + snippet
         for hit in self._search_chunks(topic, filtered, top_k):
             meta = hit.get("metadata") or {}
             pid = hit.get("paper_id") or meta.get("paper_id")
@@ -189,8 +207,15 @@ class LiteratureRetriever:
                 continue
             if not matches_filters(meta, year_from, year_to, categories, sources):
                 continue
-            if pid not in best or score > best[pid]["similarity"]:
-                best[pid] = {"similarity": score, "text": hit.get("text", ""), "meta": meta}
+            body = strip_title(hit.get("text", ""), str(meta.get("title", "")))
+            entry = best.setdefault(pid, {"similarity": score, "text": "", "meta": meta})
+            entry["similarity"] = max(entry["similarity"], score)
+            if body and not entry["text"]:          # hits arrive best-first
+                entry["text"] = body
+
+        for pid, entry in best.items():             # matched only the title chunk
+            if not entry["text"]:
+                entry["text"] = self._first_body_chunk(pid, str(entry["meta"].get("title", "")))
 
         ranked = sorted(best.items(), key=lambda kv: kv[1]["similarity"], reverse=True)[:top_k]
         results = []
@@ -207,7 +232,7 @@ class LiteratureRetriever:
                 "categories": split_list(meta.get("categories")),
                 "url": meta.get("url", ""),
                 "similarity": round(b["similarity"], 4),
-                "snippet": truncate(strip_title(b["text"], title)),
+                "snippet": truncate(b["text"]),
             })
         logger.info("Retrieved %d papers for %r (min_score=%.2f, space=%s)",
                     len(results), topic, threshold, self.space)
@@ -267,6 +292,25 @@ def get_relevant_literature(topic: str, top_k: int = 5, **filters: Any) -> List[
     Optional filters: min_score, year_from, year_to, categories, sources.
     """
     return get_retriever().retrieve(topic, top_k=top_k, **filters)
+
+
+def retrieve_for_hypothesis(topic: str, top_k: int = 5, **filters: Any) -> Dict[str, Any]:
+    """
+    One-call helper for the Hypothesis agent (Member 2) and the orchestrator:
+        {
+          "topic": ...,
+          "context": "[Paper 1: ...] ...",        # paste into the LLM prompt
+          "valid_paper_ids": ["arxiv:...", ...],  # only these may appear in cited_paper_ids
+          "papers": [ {...}, ... ],               # full results from get_relevant_literature
+        }
+    """
+    papers = get_relevant_literature(topic, top_k=top_k, **filters)
+    return {
+        "topic": topic,
+        "context": format_context(papers),
+        "valid_paper_ids": valid_paper_ids(papers),
+        "papers": papers,
+    }
 
 
 if __name__ == "__main__":
