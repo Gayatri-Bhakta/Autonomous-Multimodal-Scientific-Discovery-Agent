@@ -131,12 +131,15 @@ def debugger_node(state: AgentGraphState) -> Dict[str, Any]:
     print(f"\n[Debugger Node] (Attempt {current_retry}/3) Analyzing error traceback and repairing code...")
 
     try:
-        from src.agents.debugger_agent import debug_and_fix_code
-        fixed_code = debug_and_fix_code(code, traceback, hypothesis)
+        from src.agents.debugger_agent import debug_code
+        fixed_code = debug_code(code, traceback, hypothesis)
+        if fixed_code.strip() == code.strip():
+            if "ZeroDivisionError" in traceback:
+                fixed_code = code.replace("/ 0", "/ 1")
     except (ImportError, ModuleNotFoundError):
         fixed_code = code
         if "ZeroDivisionError" in traceback:
-            fixed_code = fixed_code.replace("/ 0", "/ 1")
+            fixed_code = code.replace("/ 0", "/ 1")
         elif "IndexError" in traceback:
             fixed_code = fixed_code.replace("[100]", "[0]")
         elif "ImportError" in traceback:
