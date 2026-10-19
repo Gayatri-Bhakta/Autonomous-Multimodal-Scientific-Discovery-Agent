@@ -1,7 +1,7 @@
 """
 Tests for the literature retriever (Member 3 - Week 2).
 
-Builds a throwaway ChromaDB store (pytest tmp_path) from a small mock corpus, then
+Builds a throwaway ChromaDB store (pytest temp folder) from a small mock corpus, then
 runs mock queries with a known correct answer to measure retrieval accuracy.
 The project's real store in data/vector_store is never touched.
 
@@ -74,15 +74,23 @@ MOCK_QUERIES = [
 ]
 
 
-@pytest.fixture
-def db(tmp_path):
-    store = ScientificVectorDB(collection_name="retriever_test",
-                               persist_directory=tmp_path / "vector_store")
+# All test stores live in ONE temp folder (different collection names). vector_db
+# caches a Chroma client per store and never closes it; a new folder per test
+# exhausts the OS open-file limit (macOS: 256) and Chroma fails with
+# "unable to open database file".
+@pytest.fixture(scope="module")
+def store_dir(tmp_path_factory):
+    return tmp_path_factory.mktemp("vector_store")
+
+
+@pytest.fixture(scope="module")
+def db(store_dir):
+    store = ScientificVectorDB(collection_name="retriever_test", persist_directory=store_dir)
     store.add_papers(MOCK_PAPERS)
     return store
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def retriever(db):
     return LiteratureRetriever(db)
 
@@ -137,8 +145,8 @@ def test_empty_topic_returns_nothing(retriever):
     assert retriever.retrieve("   ") == []
 
 
-def test_empty_store_returns_nothing(tmp_path):
-    empty = ScientificVectorDB(collection_name="empty", persist_directory=tmp_path)
+def test_empty_store_returns_nothing(store_dir):
+    empty = ScientificVectorDB(collection_name="empty_store", persist_directory=store_dir)
     assert LiteratureRetriever(empty).retrieve("anything") == []
 
 
@@ -202,9 +210,9 @@ def test_valid_paper_ids_for_citation_checks(retriever):
     assert valid_paper_ids(hits)[0] == "mock:drug"
 
 
-def test_long_paper_snippet_is_never_empty(tmp_path):
+def test_long_paper_snippet_is_never_empty(store_dir):
     long_abstract = ("Antimicrobial resistance is rising worldwide. " * 30).strip()
-    store = ScientificVectorDB(collection_name="long_paper", persist_directory=tmp_path)
+    store = ScientificVectorDB(collection_name="long_paper", persist_directory=store_dir)
     store.add_papers([{"paper_id": "mock:long", "source": "pubmed",
                        "published_date": "2026-01-01", "authors": ["A. Author"],
                        "title": "Antimicrobial Resistance Review", "abstract": long_abstract}])
@@ -234,8 +242,8 @@ def test_retrieve_for_hypothesis_bundle(monkeypatch, db):
     assert "ID: mock:drug" in bundle["context"]
 
 
-def test_works_on_real_sample_papers(tmp_path):
-    store = ScientificVectorDB(collection_name="sample", persist_directory=tmp_path)
+def test_works_on_real_sample_papers(store_dir):
+    store = ScientificVectorDB(collection_name="sample_papers", persist_directory=store_dir)
     if store.load_from_json("data/sample_papers.json") == 0:
         pytest.skip("data/sample_papers.json not found")
     hits = LiteratureRetriever(store).retrieve("antimicrobial resistance", top_k=3)
