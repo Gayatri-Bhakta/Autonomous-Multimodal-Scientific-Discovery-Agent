@@ -126,3 +126,68 @@ def test_execution_router_conditional_routing():
     }  # type: ignore
     assert execution_router(exhausted_state) == END
 
+
+
+def test_execution_router_with_critic_active():
+    from src.orchestrator import execution_router
+    critic_active_state: AgentGraphState = {
+        "execution_status": "SUCCESS",
+        "retry_count": 0,
+        "enable_critic": True,
+    }
+    assert execution_router(critic_active_state) == "critic_node"
+
+
+def test_critic_node_evaluates_output():
+    from src.orchestrator import critic_node
+    state: AgentGraphState = {
+        "research_topic": "Dynamic Pruning",
+        "selected_hypothesis": "Hypothesis: pruning saves 30% memory",
+        "execution_result": "Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+        "experiment_iteration": 0,
+        "logs": [],
+    }
+    result = critic_node(state)
+    assert result["critic_verdict"] == "ACCEPTED"
+    assert result["experiment_iteration"] == 1
+    assert any("Critic Agent" in log for log in result["logs"])
+
+
+def test_critic_router_conditional_routing():
+    from src.orchestrator import critic_router
+    from langgraph.graph import END
+
+    # Case 1: Accepted -> END
+    accepted_state: AgentGraphState = {
+        "critic_verdict": "ACCEPTED",
+        "experiment_iteration": 1,
+    }
+    assert critic_router(accepted_state) == END
+
+    # Case 2: Rejected with iteration < 2 -> code_executor
+    rejected_state: AgentGraphState = {
+        "critic_verdict": "REJECTED",
+        "experiment_iteration": 1,
+    }
+    assert critic_router(rejected_state) == "code_executor"
+
+    # Case 3: Rejected with iteration >= 2 -> END
+    exhausted_critique_state: AgentGraphState = {
+        "critic_verdict": "REJECTED",
+        "experiment_iteration": 2,
+    }
+    assert critic_router(exhausted_critique_state) == END
+
+
+def test_full_orchestrator_pipeline_with_critic_enabled():
+    app = build_orchestrator(enable_critic=True)
+    initial_state = {
+        "research_topic": "Quantum-Inspired Optimization",
+        "enable_critic": True,
+    }
+    result = app.invoke(initial_state)
+
+    assert result["research_topic"] == "Quantum-Inspired Optimization"
+    assert result.get("critic_verdict") in ["ACCEPTED", "REJECTED"]
+    assert "critic_critique" in result
+    assert result.get("experiment_iteration", 0) >= 1
