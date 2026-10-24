@@ -1,0 +1,34 @@
+[
+  {
+    "episode_id": "ep_2a65f881",
+    "timestamp": "2026-10-24T15:54:04.869430+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_b256f6d3",
+    "timestamp": "2026-10-24T15:54:05.850149+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Quantum-Inspired Optimization\nPapers retrieved: 5\n\n1. GPU Parallel Pareto Local Search for Multi-objective QUBO\n   Abstract excerpt: We revisit Pareto Local Search (PLS) for multi-o",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  }
+]

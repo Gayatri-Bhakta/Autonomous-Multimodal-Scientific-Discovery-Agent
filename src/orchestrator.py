@@ -2,6 +2,7 @@
 Multi-Agent Orchestrator
 Member 1 - Team Lead Deliverable (Gayatri Bhakta)
 Coordinates: Literature Reviewer -> Hypothesis Generator -> Code Executor <-> Debugger <-> Critic (Reflexion & Statistical Verification Loop)
+Enhanced with Context Window Management & Episodic Memory (Week 3).
 """
 
 import operator
@@ -55,6 +56,16 @@ def literature_reviewer_node(state: AgentGraphState) -> Dict[str, Any]:
         summary = run_literature_review(topic)
     except (ImportError, ModuleNotFoundError):
         summary = f"Identified papers on autonomous reasoning and code execution bottlenecks in {topic}."
+
+    # Integrate long-horizon episodic memory to prime reviewer with prior experiments
+    try:
+        from src.memory.episodic_memory import EpisodicMemoryStore
+        mem = EpisodicMemoryStore()
+        prior_context = mem.format_episodic_summary(topic, max_tokens=250)
+        if prior_context:
+            summary = f"{summary}\n\n{prior_context}"
+    except Exception:
+        pass
 
     return {
         "literature_summary": summary,
@@ -177,19 +188,45 @@ def critic_node(state: AgentGraphState) -> Dict[str, Any]:
     stats_data: Dict[str, Any] = {}
 
     try:
-        from src.agents.critic_agent import evaluate_experiment
-        critic_out = evaluate_experiment(hypothesis, result, state)
-        verdict = critic_out.get("verdict", "ACCEPTED")
-        critique = critic_out.get("critique", critique)
-        stats_data = critic_out.get("stats", {})
-    except (ImportError, ModuleNotFoundError):
-        # Heuristic evaluator fallback:
-        if "delta: 0.0" in result.lower() or "no improvement" in result.lower() or "insignificant" in result.lower():
-            verdict = "REJECTED"
-            critique = "Result lacks statistical significance: metric delta is negligible or within baseline variance."
-        elif "p-value: 0.8" in result or "p-value: 0.4" in result:
-            verdict = "REJECTED"
-            critique = "Hypothesis rejected: p-value exceeds alpha threshold of 0.05."
+        from src.agents.critic_agent import critique_experiment
+        review = critique_experiment(
+            hypothesis=hypothesis,
+            execution_result=result,
+            stats=state.get("statistical_metrics") or {},
+            code=state.get("generated_code", ""),
+        )
+        verdict = review.verdict
+        critique = "\n".join(f"- {c}" for c in review.critique)
+        if review.p_value is not None:
+            stats_data["p_value"] = review.p_value
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        try:
+            from src.agents.critic_agent import evaluate_experiment
+            critic_out = evaluate_experiment(hypothesis, result, state)
+            verdict = critic_out.get("verdict", "ACCEPTED")
+            critique = critic_out.get("critique", critique)
+            stats_data = critic_out.get("stats", {})
+        except (ImportError, ModuleNotFoundError, AttributeError):
+            # Heuristic evaluator fallback:
+            if "delta: 0.0" in result.lower() or "no improvement" in result.lower() or "insignificant" in result.lower():
+                verdict = "REJECTED"
+                critique = "Result lacks statistical significance: metric delta is negligible or within baseline variance."
+            elif "p-value: 0.8" in result or "p-value: 0.4" in result:
+                verdict = "REJECTED"
+                critique = "Hypothesis rejected: p-value exceeds alpha threshold of 0.05."
+
+    # Record episode in long-horizon episodic memory
+    try:
+        from src.memory.episodic_memory import EpisodicMemoryStore
+        mem = EpisodicMemoryStore()
+        mem.record_from_state({
+            **state,
+            "critic_verdict": verdict,
+            "critic_critique": critique,
+            "experiment_iteration": iteration,
+        })
+    except Exception:
+        pass
 
     # Apply context management to keep state within token budget
     try:

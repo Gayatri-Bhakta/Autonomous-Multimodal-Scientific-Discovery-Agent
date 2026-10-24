@@ -9,10 +9,16 @@ from src.memory.context_manager import (
     extract_numerical_facts,
     compress_text,
 )
+from src.memory.episodic_memory import (
+    Episode,
+    EpisodicMemoryStore,
+)
 
 __all__ = [
     "ContextManager",
     "estimate_tokens",
     "extract_numerical_facts",
     "compress_text",
+    "Episode",
+    "EpisodicMemoryStore",
 ]
