@@ -76,3 +76,53 @@ def test_full_orchestrator_pipeline_end_to_end():
     assert len(result["generated_code"]) > 0
     assert "Metric delta:" in result["execution_result"]
     assert len(result["logs"]) >= 3
+    assert result.get("execution_status") == "SUCCESS"
+    assert "retry_count" in result
+
+
+def test_debugger_node_increments_retry_count_and_patches_code():
+    from src.orchestrator import debugger_node
+    buggy_state: AgentGraphState = {
+        "research_topic": "Test topic",
+        "literature_summary": "Test summary",
+        "retrieved_papers": [],
+        "generated_hypotheses": ["Hypothesis: test"],
+        "selected_hypothesis": "Hypothesis: test",
+        "generated_code": "x = 10 / 0",
+        "execution_result": "ZeroDivisionError: division by zero",
+        "execution_status": "ERROR",
+        "error_traceback": "ZeroDivisionError: division by zero",
+        "retry_count": 0,
+        "logs": [],
+    }
+    result = debugger_node(buggy_state)
+    assert result["retry_count"] == 1
+    assert "10 / 1" in result["generated_code"]
+    assert any("Debugger Agent" in log for log in result["logs"])
+
+
+def test_execution_router_conditional_routing():
+    from src.orchestrator import execution_router
+    from langgraph.graph import END
+
+    # Case 1: Success -> END
+    success_state: AgentGraphState = {
+        "execution_status": "SUCCESS",
+        "retry_count": 0,
+    }  # type: ignore
+    assert execution_router(success_state) == END
+
+    # Case 2: Error with retry < 3 -> debugger_node
+    retry_state: AgentGraphState = {
+        "execution_status": "ERROR",
+        "retry_count": 1,
+    }  # type: ignore
+    assert execution_router(retry_state) == "debugger_node"
+
+    # Case 3: Error with retry >= 3 -> END (abort)
+    exhausted_state: AgentGraphState = {
+        "execution_status": "ERROR",
+        "retry_count": 3,
+    }  # type: ignore
+    assert execution_router(exhausted_state) == END
+
