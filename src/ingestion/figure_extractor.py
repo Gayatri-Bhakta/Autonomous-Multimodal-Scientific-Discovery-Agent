@@ -37,6 +37,12 @@ MIN_WIDTH = 300                       # pixels - smaller images are logos / icon
 MIN_HEIGHT = 300
 RENDER_ZOOM = 2.0                     # render figures at 2x (144 dpi) for the VLM
 CAPTION_MAX_GAP = 120                 # points between a figure and its caption
+STRIP_MAX_GAP = 40                    # points between image strips of ONE figure
+PARAGRAPH_MIN_CHARS = 80              # text this long between images splits a figure
+MAX_ZOOM = 4.0                        # cap when rendering high-resolution figures
+VECTOR_MIN_ITEMS = 5                  # a vector chart has many drawn lines / shapes
+VECTOR_MIN_SIZE = 100                 # points; smaller drawings are rules, not charts
+VECTOR_MAX_GAP = 30                   # points between drawing pieces of one chart
 
 CAPTION_RE = re.compile(r"^\s*(?:Figure|Fig\.?)\s*(\d+)\s*[:.]", re.IGNORECASE)
 
@@ -55,6 +61,8 @@ class Figure:
     bbox: List[float]                 # position on the page (points): x0, y0, x1, y1
     caption: str = ""
     figure_number: Optional[int] = None   # the "X" in "Figure X:"
+    kind: str = "raster"                  # "raster" (embedded images) | "vector" (drawn)
+    parts: int = 1                        # image strips merged into this figure
 
 
 # ------------------------------------------------------------------ helpers
@@ -132,6 +140,100 @@ def is_big_enough(width: int, height: int,
     return width >= min_width and height >= min_height
 
 
+def union(rects: List[Rect]) -> Rect:
+    return (min(r[0] for r in rects), min(r[1] for r in rects),
+            max(r[2] for r in rects), max(r[3] for r in rects))
+
+
+def text_blocks(page: Any) -> List[Tuple[Rect, str]]:
+    return [((b[0], b[1], b[2], b[3]), clean_caption(b[4])) for b in page.get_text("blocks")]
+
+
+def splits_figure(blocks: List[Tuple[Rect, str]], upper: Rect, lower: Rect) -> bool:
+    """True if a caption or a paragraph of body text sits between two images."""
+    top, bottom = upper[3], lower[1]
+    span = union([upper, lower])
+    for rect, text in blocks:
+        mid = (rect[1] + rect[3]) / 2
+        if not (top - 2 <= mid <= bottom + 2) or horizontal_overlap(rect, span) <= 0:
+            continue
+        if CAPTION_RE.match(text) or len(text) >= PARAGRAPH_MIN_CHARS:
+            return True
+    return False
+
+
+def group_strips(placements: List[Dict[str, Any]],
+                 blocks: List[Tuple[Rect, str]]) -> List[List[Dict[str, Any]]]:
+    """
+    Merge images stacked vertically in the same column (small gap, no caption or
+    paragraph between) into one figure. Papers often store one figure as several
+    horizontal image strips.
+    """
+    groups: List[List[Dict[str, Any]]] = []
+    for img in placements:                                   # already in reading order
+        b = img["bbox"]
+        for group in reversed(groups):
+            last = group[-1]["bbox"]
+            narrower = min(b[2] - b[0], last[2] - last[0])
+            same_column = horizontal_overlap(b, last) >= 0.5 * narrower
+            gap = b[1] - last[3]
+            if same_column and -5 <= gap <= STRIP_MAX_GAP and not splits_figure(blocks, last, b):
+                group.append(img)
+                break
+        else:
+            groups.append([img])
+    return groups
+
+
+def vector_figure_region(page: Any, caption_rect: Rect,
+                         taken: List[Rect]) -> Optional[Rect]:
+    """
+    Area of a chart drawn with vector graphics (lines, curves, shapes) just above
+    or below a caption. Returns None for a few stray lines (table rules, borders).
+    """
+    try:
+        # lines have zero width or height: give every piece at least 1 pt
+        drawings = [(r[0] - 0.5, r[1] - 0.5, r[2] + 0.5, r[3] + 0.5)
+                    for r in (tuple(d["rect"]) for d in page.get_drawings())]
+    except Exception:
+        return None
+    drawings = [r for r in drawings
+                if not any(horizontal_overlap(r, t) > 0 and r[1] >= t[1] - 1
+                            and r[3] <= t[3] + 1 for t in taken)]     # not inside a figure
+
+    def grow(candidates: List[Rect], upward: bool) -> List[Rect]:
+        chosen: List[Rect] = []
+        edge = caption_rect[1] if upward else caption_rect[3]
+        ordered = sorted(candidates, key=lambda r: -r[3] if upward else r[1])
+        for r in ordered:
+            if horizontal_overlap(r, caption_rect) <= 0 and not (
+                    chosen and horizontal_overlap(r, union(chosen)) > 0):
+                continue
+            gap = (edge - r[3]) if upward else (r[1] - edge)
+            if gap > VECTOR_MAX_GAP:
+                break
+            chosen.append(r)
+            edge = min(edge, r[1]) if upward else max(edge, r[3])
+        return chosen
+
+    above = grow([r for r in drawings if r[3] <= caption_rect[1] + 2], upward=True)
+    below = grow([r for r in drawings if r[1] >= caption_rect[3] - 2], upward=False)
+    for chosen in (above, below):
+        if len(chosen) >= VECTOR_MIN_ITEMS:
+            region = union(chosen)
+            if (region[2] - region[0] >= VECTOR_MIN_SIZE
+                    and region[3] - region[1] >= VECTOR_MIN_SIZE):
+                return region
+    return None
+
+
+def render(page: Any, rect: Rect, zoom: float) -> Any:
+    clip = fitz.Rect(rect) & page.rect
+    if clip.is_empty:
+        return None
+    return page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip)
+
+
 # ---------------------------------------------------------------- main API
 def extract_figures(
     pdf_path: str | Path,
@@ -153,7 +255,7 @@ def extract_figures(
     target = Path(out_dir) / safe_folder_name(paper_id)
 
     figures: List[Figure] = []
-    seen_xrefs = set()
+    seen_xrefs: Dict[int, int] = {}          # image xref -> first page it appeared on
     try:
         doc = fitz.open(pdf_path)
     except Exception as exc:
@@ -163,48 +265,83 @@ def extract_figures(
     with doc:
         for page_number, page in enumerate(doc, start=1):
             captions = find_captions(page)
+            blocks = text_blocks(page)
             used_captions: set = set()
-            for img in image_placements(page):
-                # 1. noise filter: logos, icons and headshots are small images
-                if not is_big_enough(img["width"], img["height"], min_width, min_height):
-                    continue
-                # the same image (e.g. a journal logo) repeated on every page
-                if img["xref"] and img["xref"] in seen_xrefs:
-                    continue
-                seen_xrefs.add(img["xref"])
+            taken: List[Rect] = []
 
-                # 2. render exactly the area the figure occupies on the page
-                bbox = img["bbox"]
-                clip = fitz.Rect(bbox) & page.rect
-                if clip.is_empty:
-                    continue
-                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip)
-                if not is_big_enough(pix.width, pix.height, min_width, min_height):
-                    # drawn small on the page but stored large: keep native resolution
-                    try:
-                        pix = fitz.Pixmap(doc, img["xref"])
-                        if pix.n - pix.alpha >= 4:          # CMYK -> RGB for PNG
-                            pix = fitz.Pixmap(fitz.csRGB, pix)
-                    except Exception:
-                        continue
-
-                # 3. pair with "Figure X:" caption
-                cap = pair_caption(bbox, captions, used_captions)
-                if cap:
-                    used_captions.add(id(cap))
-
-                # 4. save
+            def save(pix: Any, bbox: Rect, cap: Any, kind: str, parts: int) -> None:
                 index = len(figures) + 1
                 target.mkdir(parents=True, exist_ok=True)
                 path = target / f"fig_{index}.png"
                 pix.save(str(path))
+                if cap:
+                    used_captions.add(id(cap))
+                taken.append(bbox)
                 figures.append(Figure(
                     paper_id=paper_id, index=index, page=page_number, path=str(path),
                     width=pix.width, height=pix.height,
                     bbox=[round(v, 1) for v in bbox],
                     caption=cap[1] if cap else "",
                     figure_number=cap[2] if cap else None,
+                    kind=kind, parts=parts,
                 ))
+
+            # --- A. raster figures (embedded images), strips merged ---------------
+            candidates = []
+            for img in image_placements(page):
+                # logos / icons / headshots: small on BOTH sides. Strips are long on one.
+                if max(img["width"], img["height"]) < max(min_width, min_height):
+                    continue
+                # the same image (e.g. a journal logo) repeated on later pages
+                if img["xref"] and seen_xrefs.get(img["xref"], page_number) != page_number:
+                    continue
+                seen_xrefs.setdefault(img["xref"], page_number)
+                candidates.append(img)
+
+            for group in group_strips(candidates, blocks):
+                bbox = union([g["bbox"] for g in group])
+                # render at (close to) the images' own resolution, capped at MAX_ZOOM
+                native = max(g["width"] / max(g["bbox"][2] - g["bbox"][0], 1) for g in group)
+                pix = render(page, bbox, max(zoom, min(MAX_ZOOM, native)))
+                if pix is None:
+                    continue
+                if not is_big_enough(pix.width, pix.height, min_width, min_height):
+                    if len(group) != 1:
+                        continue
+                    # drawn small on the page but stored large: keep native resolution
+                    try:
+                        pix = fitz.Pixmap(doc, group[0]["xref"])
+                        if pix.n - pix.alpha >= 4:          # CMYK -> RGB for PNG
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                    except Exception:
+                        continue
+                    if not is_big_enough(pix.width, pix.height, min_width, min_height):
+                        continue
+                save(pix, bbox, pair_caption(bbox, captions, used_captions), "raster", len(group))
+
+            # --- B. vector figures: a "Figure X:" caption with no image -----------
+            for cap in captions:
+                if id(cap) in used_captions:
+                    continue
+                region = vector_figure_region(page, cap[0], taken)
+                if region is None:
+                    continue
+                pix = render(page, region, zoom)
+                if pix is None or not is_big_enough(pix.width, pix.height, min_width, min_height):
+                    continue
+                save(pix, region, cap, "vector", 1)
+
+        figures.sort(key=lambda f: (f.page, f.bbox[1], f.bbox[0]))
+        for new_index, fig in enumerate(figures, start=1):        # reading order names
+            if fig.index != new_index:
+                tmp = Path(fig.path).with_name(f"tmp_{new_index}.png")
+                Path(fig.path).rename(tmp)
+                fig.path, fig.index = str(tmp), new_index
+        for fig in figures:
+            final = Path(fig.path).with_name(f"fig_{fig.index}.png")
+            if Path(fig.path) != final:
+                Path(fig.path).rename(final)
+                fig.path = str(final)
 
     result = [asdict(f) for f in figures]
     if result:
@@ -228,9 +365,10 @@ def main() -> None:
     figs = extract_figures(args.pdf, args.paper_id, args.out, args.min_size, args.min_size)
     for f in figs:
         caption = f["caption"][:80] or "(no caption found)"
-        print(f"fig_{f['index']}  page {f['page']}  {f['width']}x{f['height']}  {caption}")
+        print(f"fig_{f['index']}  page {f['page']}  {f['kind']:6} {f['width']}x{f['height']}"
+              f"  parts={f['parts']}  {caption}")
     if not figs:
-        print("No figures found (vector-drawn charts are added in the next step).")
+        print("No figures found.")
 
 
 if __name__ == "__main__":

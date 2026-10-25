@@ -124,3 +124,97 @@ def test_caption_pattern_and_safe_folder_name():
     assert CAPTION_RE.match("As shown in Figure 3: x") is None    # must start the block
     assert safe_folder_name("arxiv:2610.12445v1") == "arxiv_2610.12445v1"
     assert safe_folder_name("pubmed:42827724") == "pubmed_42827724"
+
+
+# ------------------------------------------------ strip merging (real layout)
+def test_stacked_strips_become_one_captioned_figure(tmp_path):
+    """Mirrors BrickBench p.1: three full-width strips, caption under the last one."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    for y0, y1 in ((164, 251), (265, 347), (379, 465)):          # 14 pt and 32 pt gaps
+        add_image(page, (71, y0, 524, y1), 3840, 730)
+    page.insert_text((71, 485), "Figure 1: We evaluate coding agents on LEGO design.", fontsize=9)
+    pdf = tmp_path / "strips.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert len(figs) == 1
+    assert figs[0]["parts"] == 3 and figs[0]["figure_number"] == 1
+    assert abs(figs[0]["bbox"][1] - 164) < 2 and abs(figs[0]["bbox"][3] - 465) < 2
+    assert figs[0]["height"] > figs[0]["width"] / 3            # the whole figure, not a strip
+
+
+def test_thin_strips_alone_are_dropped_but_merged_ones_kept(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    add_image(page, (71, 100, 524, 120), 3840, 150)             # lone thin strip
+    page.insert_text((71, 150), "A long paragraph of body text that separates the two "
+                     "areas of the page so they are not merged together at all.", fontsize=6)
+    for y0 in (300, 330, 360, 390):                             # four thin strips stacked
+        add_image(page, (71, y0, 524, y0 + 25), 3840, 150)
+    pdf = tmp_path / "thin.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert [f["parts"] for f in figs] == [4]
+
+
+def test_paragraph_between_images_keeps_figures_separate(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    add_image(page, (71, 100, 524, 300), 900, 400)
+    page.insert_text((71, 312), "This sentence is ordinary body text of the paper that "
+                     "discusses results; it is long enough to count as a paragraph.", fontsize=6)
+    add_image(page, (71, 320, 524, 520), 900, 400, (0.8, 0.2, 0.2))
+    pdf = tmp_path / "two.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert [f["parts"] for f in figs] == [1, 1]
+
+
+# ------------------------------------------------------- vector figures
+def draw_bar_chart(page, x0, y0, x1, y1):
+    page.draw_line((x0, y1), (x1, y1))                          # x axis
+    page.draw_line((x0, y0), (x0, y1))                          # y axis
+    width = (x1 - x0) / 7
+    for i, h in enumerate((0.4, 0.7, 0.55, 0.9, 0.3, 0.65)):
+        bx = x0 + (i + 0.5) * width
+        page.draw_rect(fitz.Rect(bx, y1 - h * (y1 - y0), bx + width * 0.7, y1),
+                       color=(0, 0, 0), fill=(0.3, 0.5, 0.8))
+
+
+def test_vector_chart_is_extracted_with_caption(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((71, 80), "Results. Our method beats the baselines on every task.", fontsize=9)
+    draw_bar_chart(page, 100, 120, 480, 380)
+    page.insert_text((71, 400), "Figure 3: Accuracy of six models on the benchmark.", fontsize=9)
+    pdf = tmp_path / "vector.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert len(figs) == 1
+    fig = figs[0]
+    assert fig["kind"] == "vector" and fig["figure_number"] == 3
+    assert fig["width"] >= 300 and fig["height"] >= 300
+    assert 115 <= fig["bbox"][1] <= 125 and 375 <= fig["bbox"][3] <= 385
+
+
+def test_a_single_rule_above_a_caption_is_not_a_figure(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.draw_line((71, 380), (524, 380))                       # table / section rule
+    page.insert_text((71, 400), "Figure 5: Mentioned here but drawn on another page.", fontsize=9)
+    pdf = tmp_path / "rule.pdf"
+    doc.save(pdf)
+    assert extract_figures(pdf, "p", out_dir=tmp_path / "out") == []
+
+
+def test_raster_figure_wins_over_its_own_frame(tmp_path):
+    """An image with a drawn border must not be extracted twice."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    add_image(page, (100, 100, 500, 400), 800, 600)
+    page.draw_rect(fitz.Rect(98, 98, 502, 402), color=(0, 0, 0))
+    page.insert_text((100, 420), "Figure 1: A framed photograph.", fontsize=9)
+    pdf = tmp_path / "framed.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert len(figs) == 1 and figs[0]["kind"] == "raster" and figs[0]["figure_number"] == 1
