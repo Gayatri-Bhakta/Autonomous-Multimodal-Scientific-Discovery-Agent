@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -38,13 +39,16 @@ MIN_HEIGHT = 300
 RENDER_ZOOM = 2.0                     # render figures at 2x (144 dpi) for the VLM
 CAPTION_MAX_GAP = 120                 # points between a figure and its caption
 STRIP_MAX_GAP = 40                    # points between image strips of ONE figure
-PARAGRAPH_MIN_CHARS = 80              # text this long between images splits a figure
+PARAGRAPH_MIN_CHARS = 80              # text this long between images splits a figure ...
+LABEL_FONT_RATIO = 0.85               # ... unless it is small print (a label inside the figure)
 MAX_ZOOM = 4.0                        # cap when rendering high-resolution figures
 VECTOR_MIN_ITEMS = 5                  # a vector chart has many drawn lines / shapes
 VECTOR_MIN_SIZE = 100                 # points; smaller drawings are rules, not charts
 VECTOR_MAX_GAP = 30                   # points between drawing pieces of one chart
 
-CAPTION_RE = re.compile(r"^\s*(?:Figure|Fig\.?)\s*(\d+)\s*[:.]", re.IGNORECASE)
+# "Figure 3:", "Fig. 3.", "Figure A6:" (appendix), "(a) (b) Figure 6:" (sub-figure labels first)
+CAPTION_RE = re.compile(r"^\s*(?:\([a-z]\)\s*)*(?:Figure|Fig\.?)\s*([A-Z]?\d+)\s*[:.]",
+                        re.IGNORECASE)
 
 Rect = Tuple[float, float, float, float]
 
@@ -60,7 +64,7 @@ class Figure:
     height: int
     bbox: List[float]                 # position on the page (points): x0, y0, x1, y1
     caption: str = ""
-    figure_number: Optional[int] = None   # the "X" in "Figure X:"
+    figure_number: Optional[Any] = None   # the "X" in "Figure X:" (int, or e.g. "A6")
     kind: str = "raster"                  # "raster" (embedded images) | "vector" (drawn)
     parts: int = 1                        # image strips merged into this figure
 
@@ -84,7 +88,9 @@ def find_captions(page: Any) -> List[Tuple[Rect, str, int]]:
         text = clean_caption(text)
         match = CAPTION_RE.match(text)
         if match:
-            captions.append(((x0, y0, x1, y1), text, int(match.group(1))))
+            number = match.group(1)
+            captions.append(((x0, y0, x1, y1), text,
+                             int(number) if number.isdigit() else number.upper()))
     return captions
 
 
@@ -145,25 +151,54 @@ def union(rects: List[Rect]) -> Rect:
             max(r[2] for r in rects), max(r[3] for r in rects))
 
 
-def text_blocks(page: Any) -> List[Tuple[Rect, str]]:
-    return [((b[0], b[1], b[2], b[3]), clean_caption(b[4])) for b in page.get_text("blocks")]
+def body_font_size(doc: Any) -> float:
+    """Most common font size in the whole document (by characters) = body text size."""
+    sizes: Counter = Counter()
+    for page in doc:
+        for block in page.get_text("dict").get("blocks", []):
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    sizes[round(span.get("size", 0), 1)] += len(span.get("text", "").strip())
+    sizes.pop(0.0, None)
+    return sizes.most_common(1)[0][0] if sizes else 10.0
 
 
-def splits_figure(blocks: List[Tuple[Rect, str]], upper: Rect, lower: Rect) -> bool:
-    """True if a caption or a paragraph of body text sits between two images."""
+def text_blocks(page: Any) -> List[Tuple[Rect, str, float]]:
+    """(bbox, text, average font size) for each text block on the page."""
+    blocks = []
+    for block in page.get_text("dict").get("blocks", []):
+        spans = [sp for ln in block.get("lines", []) for sp in ln.get("spans", [])]
+        text = clean_caption(" ".join(sp.get("text", "") for sp in spans))
+        if not text:
+            continue
+        chars = sum(len(sp.get("text", "")) for sp in spans) or 1
+        size = sum(sp.get("size", 0) * len(sp.get("text", "")) for sp in spans) / chars
+        blocks.append((tuple(block["bbox"]), text, size))
+    return blocks
+
+
+def splits_figure(blocks: List[Tuple[Rect, str, float]], upper: Rect, lower: Rect,
+                  body_size: float = 10.0) -> bool:
+    """
+    True if a caption or a paragraph of BODY text sits between two images.
+    Small-print lines (row labels, legends, prompts under image strips) belong to
+    the figure and do not split it.
+    """
     top, bottom = upper[3], lower[1]
     span = union([upper, lower])
-    for rect, text in blocks:
+    for rect, text, size in blocks:
         mid = (rect[1] + rect[3]) / 2
         if not (top - 2 <= mid <= bottom + 2) or horizontal_overlap(rect, span) <= 0:
             continue
-        if CAPTION_RE.match(text) or len(text) >= PARAGRAPH_MIN_CHARS:
+        if CAPTION_RE.match(text):
+            return True
+        if len(text) >= PARAGRAPH_MIN_CHARS and size >= LABEL_FONT_RATIO * body_size:
             return True
     return False
 
 
-def group_strips(placements: List[Dict[str, Any]],
-                 blocks: List[Tuple[Rect, str]]) -> List[List[Dict[str, Any]]]:
+def group_strips(placements: List[Dict[str, Any]], blocks: List[Tuple[Rect, str, float]],
+                 body_size: float = 10.0) -> List[List[Dict[str, Any]]]:
     """
     Merge images stacked vertically in the same column (small gap, no caption or
     paragraph between) into one figure. Papers often store one figure as several
@@ -177,12 +212,35 @@ def group_strips(placements: List[Dict[str, Any]],
             narrower = min(b[2] - b[0], last[2] - last[0])
             same_column = horizontal_overlap(b, last) >= 0.5 * narrower
             gap = b[1] - last[3]
-            if same_column and -5 <= gap <= STRIP_MAX_GAP and not splits_figure(blocks, last, b):
+            if same_column and -5 <= gap <= STRIP_MAX_GAP and not splits_figure(blocks, last, b, body_size):
                 group.append(img)
                 break
         else:
             groups.append([img])
     return groups
+
+
+def include_labels(bbox: Rect, blocks: List[Tuple[Rect, str, float]],
+                   body_size: float = 10.0) -> Rect:
+    """
+    Grow a figure's box to take in small-print text right above/below it (row
+    labels, legends, model names) - part of the figure, useful for the VLM.
+    Captions and body-size text are never included.
+    """
+    changed = True
+    while changed:
+        changed = False
+        for rect, text, size in blocks:
+            if CAPTION_RE.match(text) or size >= LABEL_FONT_RATIO * body_size:
+                continue
+            if horizontal_overlap(rect, bbox) <= 0 or (rect[0] < bbox[0] - 5 or rect[2] > bbox[2] + 5):
+                continue
+            below = 0 <= rect[1] - bbox[3] <= STRIP_MAX_GAP / 2
+            above = 0 <= bbox[1] - rect[3] <= STRIP_MAX_GAP / 2
+            if below or above:
+                bbox = union([bbox, rect])
+                changed = True
+    return bbox
 
 
 def vector_figure_region(page: Any, caption_rect: Rect,
@@ -263,6 +321,7 @@ def extract_figures(
         return []
 
     with doc:
+        body_size = body_font_size(doc)
         for page_number, page in enumerate(doc, start=1):
             captions = find_captions(page)
             blocks = text_blocks(page)
@@ -298,8 +357,8 @@ def extract_figures(
                 seen_xrefs.setdefault(img["xref"], page_number)
                 candidates.append(img)
 
-            for group in group_strips(candidates, blocks):
-                bbox = union([g["bbox"] for g in group])
+            for group in group_strips(candidates, blocks, body_size):
+                bbox = include_labels(union([g["bbox"] for g in group]), blocks, body_size)
                 # render at (close to) the images' own resolution, capped at MAX_ZOOM
                 native = max(g["width"] / max(g["bbox"][2] - g["bbox"][0], 1) for g in group)
                 pix = render(page, bbox, max(zoom, min(MAX_ZOOM, native)))
@@ -326,7 +385,10 @@ def extract_figures(
                 region = vector_figure_region(page, cap[0], taken)
                 if region is None:
                     continue
-                pix = render(page, region, zoom)
+                # short, wide charts: render sharper (up to MAX_ZOOM) to reach min size
+                w, h = region[2] - region[0], region[3] - region[1]
+                vzoom = min(MAX_ZOOM, max(zoom, min_width / max(w, 1), min_height / max(h, 1)))
+                pix = render(page, region, vzoom)
                 if pix is None or not is_big_enough(pix.width, pix.height, min_width, min_height):
                     continue
                 save(pix, region, cap, "vector", 1)
@@ -348,6 +410,26 @@ def extract_figures(
         (target / "figures.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     logger.info("%s: %d figure(s) extracted -> %s", paper_id, len(result), target)
     return result
+
+
+def load_extracted_figures(out_dir: str | Path = DEFAULT_OUT_DIR,
+                           paper_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    All figures saved so far (from every <paper>/figures.json), for the VLM chart
+    reader (Member 2). Each item has: paper_id, index, page, path, width, height,
+    bbox, caption, figure_number, kind, parts.
+
+        for fig in load_extracted_figures():
+            result = read_chart(fig["path"], caption=fig["caption"])
+    """
+    root = Path(out_dir)
+    folders = [root / safe_folder_name(paper_id)] if paper_id else sorted(root.glob("*"))
+    figures: List[Dict[str, Any]] = []
+    for folder in folders:
+        manifest = folder / "figures.json"
+        if manifest.is_file():
+            figures.extend(json.loads(manifest.read_text(encoding="utf-8")))
+    return figures
 
 
 def main() -> None:

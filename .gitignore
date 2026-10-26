@@ -7,3 +7,5 @@ __pycache__/
 data/ingestion_state.json
 data/raw/
 venv/
+data/pdfs/
+data/extracted_figures/

@@ -218,3 +218,52 @@ def test_raster_figure_wins_over_its_own_frame(tmp_path):
     doc.save(pdf)
     figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
     assert len(figs) == 1 and figs[0]["kind"] == "raster" and figs[0]["figure_number"] == 1
+
+
+# --------------------------------------------- real-paper layouts (BrickBench)
+def test_small_print_labels_between_strips_do_not_split_the_figure(tmp_path):
+    """Each strip has a long 6 pt prompt under it; body text is 10 pt."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_textbox(fitz.Rect(71, 400, 524, 800),               # a real paragraph:
+                        "Body text of the paper discussing the results. " * 25,   # body = 10 pt
+                        fontsize=10)
+    for i, y0 in enumerate((100, 160, 220)):
+        add_image(page, (71, y0, 524, y0 + 40), 3840, 340, (0.2 + 0.2 * i, 0.4, 0.6))
+        page.insert_text((73, y0 + 48), "Model A long prompt describing the assembly in "
+                         "detail so that it is clearly longer than eighty characters.", fontsize=6)
+    page.insert_text((73, 278), "GPT-6 Astra   Claude Opus 5.5   Qwen 3.8 Flash", fontsize=6)
+    page.insert_text((71, 300), "Figure 4: Samples from every agent.", fontsize=10)
+    pdf = tmp_path / "labels.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert len(figs) == 1
+    assert figs[0]["parts"] == 3 and figs[0]["figure_number"] == 4
+    assert figs[0]["bbox"][3] >= 276                     # model-name legend included
+
+
+def test_appendix_and_subfigure_captions():
+    assert CAPTION_RE.match("Figure A6: Additional samples").group(1) == "A6"
+    assert CAPTION_RE.match("(a) (b) Figure 6: Human evaluation").group(1) == "6"
+
+
+def test_short_wide_vector_chart_is_rendered_sharp_enough(tmp_path):
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    draw_bar_chart(page, 80, 100, 520, 210)              # only 110 pt tall
+    page.insert_text((71, 225), "Figure 3: Summary metrics.", fontsize=9)
+    pdf = tmp_path / "wide.pdf"
+    doc.save(pdf)
+    figs = extract_figures(pdf, "p", out_dir=tmp_path / "out")
+    assert len(figs) == 1 and figs[0]["kind"] == "vector"
+    assert figs[0]["height"] >= 300                      # rendered at a higher zoom
+
+
+def test_load_extracted_figures_for_the_vlm(paper_pdf, tmp_path):
+    from src.ingestion.figure_extractor import load_extracted_figures
+    out = tmp_path / "out"
+    extract_figures(paper_pdf, "arxiv:1", out_dir=out)
+    extract_figures(paper_pdf, "pubmed:2", out_dir=out)
+    assert len(load_extracted_figures(out)) == 6
+    one = load_extracted_figures(out, paper_id="arxiv:1")
+    assert len(one) == 3 and one[0]["caption"].startswith("Figure 1")
