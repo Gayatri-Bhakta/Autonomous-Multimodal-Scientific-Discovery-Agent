@@ -1,6 +1,6 @@
 # Critic Agent (Week 3)
 
-Prepared by: Member 5 (Academic Critic Agent & QA Lead)
+Prepared by: Sachin (Academic Critic Agent & QA Lead)
 Code: `src/agents/critic_agent.py`  |  Tests: `tests/test_critic.py`
 
 The Critic reviews one finished experiment like a referee for a top venue (Nature / NeurIPS)
