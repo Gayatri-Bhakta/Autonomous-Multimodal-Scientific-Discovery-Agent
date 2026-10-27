@@ -267,3 +267,56 @@ def test_load_extracted_figures_for_the_vlm(paper_pdf, tmp_path):
     assert len(load_extracted_figures(out)) == 6
     one = load_extracted_figures(out, paper_id="arxiv:1")
     assert len(one) == 3 and one[0]["caption"].startswith("Figure 1")
+
+
+# ------------------------------------------------------------- robustness
+def test_password_protected_pdf_returns_empty(tmp_path):
+    doc = fitz.open()
+    add_image(doc.new_page(), (72, 72, 472, 372), 800, 600)
+    pdf = tmp_path / "locked.pdf"
+    doc.save(pdf, encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="secret", owner_pw="owner")
+    assert extract_figures(pdf, "p", out_dir=tmp_path / "out") == []
+
+
+def test_owner_password_only_pdf_is_still_extracted(tmp_path):
+    doc = fitz.open()
+    add_image(doc.new_page(), (72, 72, 472, 372), 800, 600)
+    pdf = tmp_path / "owner_only.pdf"
+    doc.save(pdf, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw="owner")   # no user password
+    assert len(extract_figures(pdf, "p", out_dir=tmp_path / "out")) == 1
+
+
+def test_rerun_with_fewer_figures_removes_stale_files(paper_pdf, tmp_path):
+    out = tmp_path / "out"
+    assert len(extract_figures(paper_pdf, "p", out_dir=out)) == 3
+    doc = fitz.open()
+    add_image(doc.new_page(), (72, 72, 472, 372), 800, 600)
+    smaller = tmp_path / "smaller.pdf"
+    doc.save(smaller)
+    figs = extract_figures(smaller, "p", out_dir=out)              # same paper id, 1 figure
+    assert len(figs) == 1
+    assert sorted(p.name for p in (out / "p").glob("fig_*.png")) == ["fig_1.png"]
+    assert len(json.loads((out / "p" / "figures.json").read_text())) == 1
+
+
+def test_rerun_with_no_figures_clears_old_output(paper_pdf, tmp_path):
+    out = tmp_path / "out"
+    extract_figures(paper_pdf, "p", out_dir=out)
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), "Text only.")
+    text_only = tmp_path / "text_only.pdf"
+    doc.save(text_only)
+    assert extract_figures(text_only, "p", out_dir=out) == []
+    assert list((out / "p").glob("fig_*.png")) == []
+    assert not (out / "p" / "figures.json").exists()
+
+
+def test_requirements_list_one_package_per_line():
+    from pathlib import Path
+    req = Path(__file__).resolve().parents[1] / "requirements.txt"
+    if not req.exists():
+        pytest.skip("requirements.txt not found")
+    for line in req.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            assert line.count(">=") <= 1 and line.count("==") <= 1, f"two packages on one line: {line}"

@@ -320,6 +320,20 @@ def extract_figures(
         logger.error("Cannot open %s: %s", pdf_path, exc)
         return []
 
+    # Encrypted PDFs: many only have an owner password and open with an empty
+    # user password; if a real password is needed we cannot read the pages.
+    if doc.needs_pass and not doc.authenticate(""):
+        logger.warning("Skipping %s: PDF is password-protected", pdf_path)
+        doc.close()
+        return []
+
+    # A re-run must not leave figures from the previous run behind
+    # (e.g. old fig_7.png when the paper now yields only 5 figures).
+    if target.is_dir():
+        for old in [*target.glob("fig_*.png"), *target.glob("tmp_*.png"),
+                    target / "figures.json"]:
+            old.unlink(missing_ok=True)
+
     with doc:
         body_size = body_font_size(doc)
         for page_number, page in enumerate(doc, start=1):

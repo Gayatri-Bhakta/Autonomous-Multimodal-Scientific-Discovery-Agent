@@ -9,4 +9,5 @@ python-dotenv>=1.0.0
 langchain-text-splitters
 sentence-transformers
 biopython>=1.83
-docker>=7.0.0pymupdf>=1.24
+docker>=7.0.0
+pymupdf>=1.24
