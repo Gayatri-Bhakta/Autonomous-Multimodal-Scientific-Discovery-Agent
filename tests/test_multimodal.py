@@ -6,7 +6,7 @@ Independent checks on the "Giving the AI Eyes" pipeline:
   PDF  ->  figure_extractor (Member 3)  ->  PNG files + figures.json  ->  chart_reader (Member 2)
 
 Part A tests the hand-off the chart reader relies on (what the extractor promises).
-Part B records two known bugs as expected failures (they turn green once fixed).
+Part B keeps regression tests for two bugs found in QA and fixed by Member 3.
 Part C checks data/sample_chart_extractions.json once Member 2 pushes it (skipped until then).
 
 All tests are offline and use small synthetic PDFs built with PyMuPDF.
@@ -171,11 +171,8 @@ def test_pdf_without_images_or_charts_returns_an_empty_list(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Part B: known bugs, recorded so they are not forgotten (non-strict xfail:
-# the file stays green now, and reports XPASS once Member 3 fixes them)
+# Part B: regression tests for bugs found in QA (both fixed by Member 3)
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(raises=ValueError, strict=False,
-                   reason="BUG: an encrypted PDF crashes with ValueError; other broken PDFs return []")
 def test_encrypted_pdf_returns_empty_instead_of_crashing(tmp_path):
     doc = fitz.open()
     doc.new_page().insert_text((72, 72), "secret")
@@ -185,9 +182,6 @@ def test_encrypted_pdf_returns_empty_instead_of_crashing(tmp_path):
     assert extract_figures(pdf, "p", out_dir=tmp_path / "out") == []
 
 
-@pytest.mark.xfail(strict=False,
-                   reason="BUG: re-running a paper with fewer figures leaves stale fig_N.png files "
-                          "that figures.json no longer lists")
 def test_rerun_does_not_leave_stale_images(three_figure_pdf, tmp_path):
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
