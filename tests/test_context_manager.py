@@ -121,3 +121,21 @@ def test_format_prompt_within_budget_protects_system_and_query():
     assert sys_prompt in prompt
     assert user_query in prompt
     assert estimate_tokens(prompt) <= 200
+
+
+def test_format_multimodal_context_with_figures():
+    cm = ContextManager(max_context_tokens=300)
+    text_context = "Transformer inference memory overview.\n" * 20
+    figures = [
+        {
+            "chart_type": "Bar Chart",
+            "caption": "Memory footprint across pruning thresholds",
+            "trend": "Memory drops monotonically as pruning ratio increases",
+            "extracted_metrics": {"Peak Memory": "14.2 GB", "Pruned Memory": "9.8 GB"},
+        }
+    ]
+    multimodal_prompt = cm.format_multimodal_context(text_context, figures_data=figures, max_tokens=250)
+    assert "Extracted Multimodal Charts & Figures" in multimodal_prompt
+    assert "Figure 1: Bar Chart" in multimodal_prompt
+    assert "Peak Memory: 14.2 GB" in multimodal_prompt
+    assert estimate_tokens(multimodal_prompt) <= 300

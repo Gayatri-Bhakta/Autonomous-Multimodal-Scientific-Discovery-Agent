@@ -3,11 +3,12 @@ Context Window Memory Manager
 Member 1 (Gayatri Bhakta - Team Lead Deliverable, Week 3)
 
 Prevents context window overflow and token exhaustion during long-horizon,
-multi-step experimental runs. Provides:
+multi-step experimental runs and multimodal literature ingestion. Provides:
 1. Token estimation (tiktoken with robust character-based heuristic fallback).
 2. Numerical fact extraction (preserves crucial experimental numbers, p-values, deltas).
 3. Sliding window pruning for historical agent logs and dialogue turns.
 4. Automatic state summarization when total tokens exceed 4,000.
+5. Multimodal context synthesis (budgeting extracted PDF charts and text chunks).
 """
 
 from __future__ import annotations
@@ -293,3 +294,43 @@ class ContextManager:
         safe_context = compress_text(context, max_tokens=available_for_context)
 
         return f"{system_prompt}\n\nContext:\n{safe_context}\n\nTask:\n{user_prompt}"
+
+    def format_multimodal_context(
+        self,
+        text_context: str,
+        figures_data: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """
+        Synthesize text literature chunks with multimodal chart and figure extractions.
+        Compresses extensive chart data points into key labels, baselines, and peak values
+        to prevent exceeding token budgets.
+        """
+        budget = max_tokens or self.max_context_tokens
+        fig_sections = []
+
+        if figures_data:
+            for i, fig in enumerate(figures_data, 1):
+                caption = fig.get("caption", "").strip() or "No caption"
+                chart_type = fig.get("chart_type", "Figure")
+                trend = fig.get("trend", fig.get("summary", ""))
+                metrics = fig.get("extracted_metrics", {})
+
+                metric_strs = [f"{k}: {v}" for k, v in metrics.items()]
+                metric_line = f" | Metrics: {', '.join(metric_strs)}" if metric_strs else ""
+                fig_sections.append(
+                    f"[Figure {i}: {chart_type}]\n"
+                    f"Caption: {caption[:120]}\n"
+                    f"Trend: {trend[:150]}{metric_line}"
+                )
+
+        figures_block = "\n\n".join(fig_sections)
+        fig_tokens = estimate_tokens(figures_block)
+
+        # Allocate remainder of budget to literature text
+        text_budget = max(200, budget - fig_tokens - 100)
+        compressed_text = compress_text(text_context, max_tokens=text_budget)
+
+        if figures_block:
+            return f"=== Literature Background ===\n{compressed_text}\n\n=== Extracted Multimodal Charts & Figures ===\n{figures_block}"
+        return compressed_text
