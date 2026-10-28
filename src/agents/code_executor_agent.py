@@ -85,15 +85,22 @@ def run_code_detailed(code: str, timeout: int = 30) -> Dict[str, Any]:
     loop accepts either).
     Later: replace this with a Docker sandbox.
     """
-    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".py", delete=False) as f:
         f.write(code)
         path = f.name
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
 
     try:
         result = subprocess.run(
             [sys.executable, path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=env,
             timeout=timeout,
         )
         return {

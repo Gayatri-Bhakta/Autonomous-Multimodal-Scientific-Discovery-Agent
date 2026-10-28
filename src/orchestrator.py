@@ -107,24 +107,24 @@ def code_executor_node(state: AgentGraphState) -> Dict[str, Any]:
     code = state.get("generated_code", "")
 
     try:
-        from src.agents.code_executor_agent import generate_and_run_code, run_code
-        if code:
-            output = run_code(code)
+        from src.agents.code_executor_agent import generate_code, run_code_detailed
+        if not code:
+            code = generate_code(selected_hyp)
+        res = run_code_detailed(code)
+        is_error = res["timed_out"] or res["exit_code"] != 0
+        if is_error:
+            output = f"Execution failed (exit code {res['exit_code']}):\n{res['stderr'].strip()}"
+            traceback_info = res["stderr"].strip() or output
         else:
-            code, output = generate_and_run_code(selected_hyp)
+            output = res["stdout"].strip()
+            traceback_info = ""
     except (ImportError, ModuleNotFoundError):
         code = code or "print('Running hypothesis test script... Result: Success.')"
         output = "Execution successful. Metric delta: +0.25"
-
-    is_error = (
-        "Execution failed" in output
-        or "Traceback" in output
-        or "Error:" in output
-        or "timed out" in output
-    )
+        is_error = False
+        traceback_info = ""
 
     status = "ERROR" if is_error else "SUCCESS"
-    traceback_info = output if is_error else ""
 
     return {
         "generated_code": code,

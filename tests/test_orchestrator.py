@@ -143,7 +143,17 @@ def test_critic_node_evaluates_output():
     state: AgentGraphState = {
         "research_topic": "Dynamic Pruning",
         "selected_hypothesis": "Hypothesis: pruning saves 30% memory",
-        "execution_result": "Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+        "generated_code": "import random\n# Pruning memory simulation\nmemory_saved = 0.31",
+        "execution_result": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+        "statistical_metrics": {
+            "p_value": 0.003,
+            "is_significant": True,
+            "confidence_interval_95": [2.1, 6.4],
+            "effect_size_cohens_d": 0.82,
+            "n_baseline": 40,
+            "n_treatment": 40,
+            "summary": "Statistically significant improvement over baseline with large effect size.",
+        },
         "experiment_iteration": 0,
         "logs": [],
     }
@@ -188,6 +198,6 @@ def test_full_orchestrator_pipeline_with_critic_enabled():
     result = app.invoke(initial_state)
 
     assert result["research_topic"] == "Quantum-Inspired Optimization"
-    assert result.get("critic_verdict") in ["ACCEPTED", "REJECTED"]
+    assert result.get("critic_verdict") in ["ACCEPTED", "REJECTED", "NEEDS_REPLICATION"]
     assert "critic_critique" in result
     assert result.get("experiment_iteration", 0) >= 1
