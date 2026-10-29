@@ -22,7 +22,7 @@ In **Week 3**, the Autonomous Multimodal Scientific Discovery Agent expands from
 | Member | Role | Focus Area | Deliverable Files | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Member 1 (Lead)** | Gayatri Bhakta | Context Memory & Graph Routing | `src/memory/context_manager.py`<br>`src/memory/episodic_memory.py`<br>`src/orchestrator.py` (`critic_node`)<br>`docs/mid_review_deck.md` | **100% Complete** |
-| **Member 2** | Kabil | VLM Chart Reader | `src/ingestion/chart_reader.py`<br>`data/sample_chart_extractions.json` | Pending PR |
+| **Member 2** | Kabil | VLM Chart Reader | `src/ingestion/chart_reader.py`<br>`data/sample_chart_extractions.json` | **100% Complete on Branch (Audited & Approved)** |
 | **Member 3** | Afrah | PDF Figure Extraction Engine | `src/ingestion/figure_extractor.py`<br>`docs/figure_extractor.md` | **100% Complete on Branch** |
 | **Member 4** | Abhishek | Statistical Testing Suite | `src/utils/stats_validator.py`<br>`tests/test_stats_validator.py` | Pending PR |
 | **Member 5** | Sachin | Academic Critic Agent & QA | `src/agents/critic_agent.py`<br>`tests/test_critic.py`<br>`tests/test_multimodal.py` | **100% Complete on Branch** |
@@ -88,3 +88,13 @@ flowchart TD
   * `tests/test_state.py` (5 tests)
   * `tests/test_vector_db.py` (5 tests)
 * **Status:** **0 Failures, 100% Green.**
+
+---
+
+## 6. Peer Review Audits & Integration Readiness
+
+* **Member 2 (Kabil - VLM Chart Reader):** Formal review completed on October 29, 2026. Code meets enterprise criteria with standard-library `urllib` HTTP client, Pydantic v2 schemas, finite numeric validation, and 28 unit tests. Full report: [`docs/code_review_kabil_week3.md`](file:///e:/Autonomous-Multimodal-Scientific-Discovery-Agent/docs/code_review_kabil_week3.md). Status: **Approved for Day 7 Integration**.
+* **Member 3 (Afrah - PDF Figure Extractor):** Completed on `origin/afrah` (`src/ingestion/figure_extractor.py`, 13 tests green). Status: **Ready for Integration**.
+* **Member 5 (Sachin - Critic Agent & Multimodal QA):** Completed on `origin/sachin` (`src/agents/critic_agent.py`, `tests/test_critic.py`, `tests/test_multimodal.py`). Status: **Ready for Integration upon test alignment**.
+* **Member 4 (Abhishek - Statistical Validator):** In development on `origin/Abhishek` (`src/utils/stats_validator.py`). Status: **Awaiting branch push**.
+
