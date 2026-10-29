@@ -249,3 +249,79 @@ def test_llm_can_not_turn_noise_into_acceptance():
 @pytest.mark.parametrize("reply", ["not json at all", '{"critique": []}', RuntimeError("API down")])
 def test_bad_llm_reply_falls_back_to_offline_rules(reply):
     assert review(SIGNIFICANT, llm=FakeLLM(reply)).verdict == "ACCEPTED"
+
+
+# ---------------------------------------------------------------------------
+# Contract with the orchestrator's critic_node (Lead). Protects the hand-off.
+# ---------------------------------------------------------------------------
+def test_contract_used_by_the_orchestrator_critic_node():
+    """src/orchestrator.py calls critique_experiment with these keyword names and reads these fields."""
+    result = critique_experiment(
+        hypothesis=HYP,
+        execution_result=RELEVANT_RESULT,
+        stats=SIGNIFICANT,
+        code="print('pruning memory perplexity')",
+    )
+    assert result.verdict in {"ACCEPTED", "REJECTED", "NEEDS_REPLICATION"}
+    assert isinstance(result.critique, list) and all(isinstance(line, str) for line in result.critique)
+    assert result.p_value == SIGNIFICANT["p_value"]
+
+
+def _critic_node_or_skip():
+    orchestrator = pytest.importorskip("src.orchestrator")
+    if not hasattr(orchestrator, "critic_node"):
+        pytest.skip("critic_node is not in this branch yet (Lead)")
+    return orchestrator.critic_node
+
+
+def test_critic_node_accepts_a_real_significant_result():
+    state = {
+        "research_topic": "Dynamic Pruning",
+        "selected_hypothesis": HYP,
+        "execution_result": RELEVANT_RESULT,
+        "statistical_metrics": SIGNIFICANT,
+        "experiment_iteration": 0,
+        "logs": [],
+    }
+    out = _critic_node_or_skip()(state)
+    assert out["critic_verdict"] == "ACCEPTED"
+    assert out["experiment_iteration"] == 1
+
+
+def test_critic_node_asks_for_replication_when_no_statistics_exist():
+    state = {
+        "research_topic": "Dynamic Pruning",
+        "selected_hypothesis": HYP,
+        "execution_result": RELEVANT_RESULT,
+        "experiment_iteration": 0,
+        "logs": [],
+    }
+    out = _critic_node_or_skip()(state)
+    assert out["critic_verdict"] == "NEEDS_REPLICATION"
+
+
+# ---------------------------------------------------------------------------
+# Check 1 must not be fooled by a script that merely embeds the claim
+# ---------------------------------------------------------------------------
+LONG_HYP = "Dynamic token pruning reduces inference memory.\nSecond sentence: it's tested with 'quotes' on long contexts."
+
+
+def test_claim_embedded_with_repr_does_not_count_as_testing_it():
+    """repr() changes newlines and quotes, so a plain text match misses the copy."""
+    code = f"HYPOTHESIS = {LONG_HYP!r}\nprint(HYPOTHESIS)\nprint('Baseline mean: 100')"
+    assert hypothesis_coverage(LONG_HYP, code + "\n" + LONG_HYP) < 0.3
+
+    result = critique_experiment(LONG_HYP, LONG_HYP + "\nBaseline mean: 100", SIGNIFICANT, code=code)
+    assert result.verdict == "REJECTED"
+    assert result.checks.hypothesis_tested is False
+
+
+def test_a_real_result_line_that_mentions_the_claim_still_counts():
+    claim = "Dynamic token pruning reduces inference memory."
+    real = "Measured memory with and without token pruning: memory dropped 31%."
+    assert hypothesis_coverage(claim, real) >= 0.3
+
+
+def test_short_claims_are_not_over_stripped():
+    claim = "Pruning reduces memory."
+    assert hypothesis_coverage(claim, "Pruning reduces memory by 31% in our runs.") == 1.0
