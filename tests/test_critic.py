@@ -325,3 +325,55 @@ def test_a_real_result_line_that_mentions_the_claim_still_counts():
 def test_short_claims_are_not_over_stripped():
     claim = "Pruning reduces memory."
     assert hypothesis_coverage(claim, "Pruning reduces memory by 31% in our runs.") == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Integration with Member 4's statistics engine (skipped until src/utils/stats_validator.py exists)
+# ---------------------------------------------------------------------------
+def _validator():
+    return pytest.importorskip("src.utils.stats_validator")
+
+
+def test_real_validator_output_feeds_the_critic():
+    np = pytest.importorskip("numpy")
+    validator = _validator()
+    rng = np.random.default_rng(1)
+    baseline, treatment = rng.normal(100, 10, 40), rng.normal(112, 10, 40)
+
+    # The group sizes are added here until the validator reports them itself (see the xfail test below).
+    stats = {**validator.validate_experiment(baseline, treatment), "n_baseline": 40, "n_treatment": 40}
+    result = review(stats)
+
+    assert result.verdict == "ACCEPTED"
+    assert result.p_value == stats["p_value"]
+
+
+def test_critic_with_the_real_validator_accepts_real_effects_and_rejects_noise():
+    np = pytest.importorskip("numpy")
+    validator = _validator()
+    runs = 100
+    accepted_real = accepted_noise = 0
+    for seed in range(runs):
+        rng = np.random.default_rng(seed)
+        baseline = rng.normal(100, 10, 40)
+        for kind, treatment in (("real", rng.normal(112, 10, 40)), ("noise", rng.normal(100, 10, 40))):
+            stats = {**validator.validate_experiment(baseline, treatment), "n_baseline": 40, "n_treatment": 40}
+            if review(stats).verdict == "ACCEPTED":
+                accepted_real += kind == "real"
+                accepted_noise += kind == "noise"
+    assert accepted_real >= 0.95 * runs
+    assert accepted_noise <= 0.10 * runs
+
+
+@pytest.mark.xfail(strict=False, reason="OPEN: validate_experiment does not return n_baseline / n_treatment, "
+                                        "so the Critic can not confirm the sample size and never accepts")
+def test_validator_reports_the_group_sizes():
+    result = _validator().validate_experiment([1, 2, 3, 4], [2, 3, 4, 6])
+    assert result["n_baseline"] == 4 and result["n_treatment"] == 4
+
+
+@pytest.mark.xfail(strict=False, reason="OPEN: the orchestrator's code_executor_node imports "
+                                        "compute_statistics_from_output, which stats_validator does not define yet, "
+                                        "so the real validator is never used in the pipeline")
+def test_validator_provides_the_function_the_orchestrator_imports():
+    assert callable(getattr(_validator(), "compute_statistics_from_output", None))
