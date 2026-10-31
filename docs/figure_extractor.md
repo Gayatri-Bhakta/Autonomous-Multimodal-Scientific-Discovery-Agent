@@ -67,3 +67,34 @@ python -m pytest tests/test_figure_extractor.py -v
 - A figure made of a vector chart next to an image (e.g. "(a)" drawn, "(b)" an image) is saved as the image part only.
 - Captions placed beside a figure, rather than above or below it, are not paired.
 - PubMed papers often have no free PDF; arXiv PDFs work best.
+
+## Figure report
+
+`src/ingestion/figure_report.py` summarises every figure extracted so far, so we can check the extractor at a glance.
+
+```bash
+python -m src.ingestion.figure_report          # table per paper
+python -m src.ingestion.figure_report --json   # same summary as JSON
+```
+
+Example output on the 3 sample papers:
+
+| Paper | Figures | Captioned | Vector |
+| --- | --- | --- | --- |
+| arxiv:2610.12452v1 | 13 | 13 | 8 |
+| arxiv:2610.12463v1 | 1 | 1 | 1 |
+| arxiv:2610.12466v1 | 9 | 9 | 9 |
+
+23 figures from 3 papers, 23 with captions (100%).
+
+For the chart reader (Member 2), `figures_for_chart_reader(figures)` returns only figures that have a caption and whose image file exists:
+
+```python
+from src.ingestion.figure_extractor import load_extracted_figures
+from src.ingestion.figure_report import figures_for_chart_reader
+
+for fig in figures_for_chart_reader(load_extracted_figures()):
+    fig["path"], fig["caption"], fig["paper_id"]
+```
+
+Tests: `python -m pytest tests/test_figure_report.py -v` (4 tests).
