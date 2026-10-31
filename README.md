@@ -79,6 +79,10 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── mid_review_report.md            # Week 2 Mid-Review integration report
 │   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
 │   └── week3_integration_report.md     # Week 3 multimodal & critic integration report
+├── examples/
+│   ├── extract_sample_figures.py       # Standalone PDF figure extraction runner
+│   ├── generate_sample_hypotheses.py   # RAG-grounded hypothesis generator runner
+│   └── run_chart_extraction.py         # Multimodal VLM chart reading runner
 ├── sandbox/
 │   └── Dockerfile                      # python:3.10-slim sandbox environment
 ├── src/
