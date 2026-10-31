@@ -1,6 +1,6 @@
-# Debugging Traces (Reflexion self-debugging loop)-20 October 2026
+# Debugging Traces (Reflexion self-debugging loop)-22 October 2026
 
-Prepared by: Member 5 (Self-Debugging \& QA Lead)
+Prepared by: Sachin R Nair (Self-Debugging \& QA Lead)
 
 Each script below is intentionally buggy. The loop runs it, reads the traceback, asks the
 Debugger Agent for corrected code, and runs the fixed script again. All three fail on
