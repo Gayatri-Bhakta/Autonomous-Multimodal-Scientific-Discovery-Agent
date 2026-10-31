@@ -1,4 +1,4 @@
-"""
+﻿"""
 Multimodal ingestion QA (Member 5, Week 3).
 
 Independent checks on the "Giving the AI Eyes" pipeline:
@@ -210,7 +210,7 @@ CHART_FIELDS = {
     "y-axis": ["y_axis", "y_axis_label", "y_label", "yaxis"],
     "baseline": ["baseline", "baseline_values", "baseline_numbers", "baseline_value"],
     "peak": ["peak", "peak_value", "peak_values", "peak_performance"],
-    "trend": ["trend", "trend_conclusion", "overall_trend", "conclusion"],
+    "trend": ["trend", "trend_conclusion", "overall_trend", "conclusion", "trend_summary"],
 }
 
 

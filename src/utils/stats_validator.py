@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+﻿from typing import Any, Sequence
 
 import numpy as np
 from scipy import stats
@@ -72,5 +72,5 @@ def validate_experiment(
         "effect_size_cohens_d": float(effect_size),
         "mean_difference": mean_difference,
         "test_statistic": float(test_result.statistic),
-        "summary": summary,
+        "summary": summary,`n        "n_baseline": int(len(baseline)),`n        "n_treatment": int(len(experiment)),
     }
