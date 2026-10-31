@@ -76,19 +76,6 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 ├── requirements.txt                # Unified project dependencies
 └── README.md
 ```
-
----
-
-## 👥 Team Work Distribution (Week 1)
-
-| Member | Focus Area | Branch | Main Deliverable |
-|---|---|---|---|
-| **Gayatri Bhakta (Lead)** | Multi-Agent Architecture & Orchestrator | `feature/multi-agent-architecture` / `Gayatri-Bhakta` | Architecture diagram, LangGraph StateGraph, and project structure |
-| **Member 2** | Literature Reviewer Agent | `feature/literature-reviewer` | Reviewer workflow, synthesis prompt, and sample outputs |
-| **Afrah (Member 3)** | arXiv and PubMed Ingestion | `feature/arxiv-pubmed-api` / `afrah` | API scrapers, unified schema, and live scraped papers |
-| **Member 4** | Data Ingestion & Vector DB | `feature/data-ingestion-vector-db` | Vector DB integration, ChromaDB embeddings & retrieval |
-| **Sachin (Member 5)** | Code Executor & GitHub Integration | `feature/github-integration` / `sachin` | Code Executor agent, test suites, and PR standards |
-
 ---
 
 ## 🛠 Setup & Installation
@@ -121,11 +108,3 @@ pytest -v
 
 ---
 
-## 📋 SOP & GitHub Contribution Rules
-
-According to **Zaalima Development Pvt. Ltd. SOP Version 1.1**:
-1. **Branch Isolation:** Never push directly to `main`. Every member develops on their assigned feature branch.
-2. **Daily Commit Metric:** Consistent daily commits are strictly monitored:
-   - **Mid Review (Days 23–30):** Commits required on at least **10 different days**.
-   - **Final Review (Days 5–10):** Commits required on **all 20 days** without gaps.
-3. **Pull Request Protocol:** Create a PR from your feature branch to `main`. All PRs must have passing tests (`pytest`) before merge approval by the Team Lead.
