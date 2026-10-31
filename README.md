@@ -74,17 +74,11 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 ├── docs/
 │   ├── role_specifications.md          # Multi-agent contracts and state schemas
 │   ├── ingestion.md                    # Ingestion engines & scraper documentation
-│   ├── retriever.md                    # ChromaDB literature retrieval & filters
-│   ├── sandbox_runner.md               # Docker execution sandbox & security bounds
-│   ├── debugging_traces.md             # Reflexion self-debugging before/after traces
-│   ├── context_manager.md              # Working context token budget & diet
-│   ├── memory_architecture.md          # Dual-layer memory hierarchy specifications
-│   ├── mid_review_status.md            # Mid-Project Review readiness audit
-│   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
+│   ├── pr_review_standards.md          # Team pull request review protocol
 │   ├── week1_integration_report.md     # Week 1 architecture & integration audit
 │   ├── mid_review_report.md            # Week 2 Mid-Review integration report
-│   ├── week3_integration_report.md     # Week 3 multimodal & critic integration report
-│   └── pr_review_standards.md          # Team pull request review protocol
+│   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
+│   └── week3_integration_report.md     # Week 3 multimodal & critic integration report
 ├── sandbox/
 │   └── Dockerfile                      # python:3.10-slim sandbox environment
 ├── src/
