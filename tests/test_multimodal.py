@@ -18,7 +18,9 @@ from pathlib import Path
 
 import pytest
 
-extractor = pytest.importorskip("src.ingestion.figure_extractor")  # skips if the module or PyMuPDF is missing
+extractor = pytest.importorskip("src.ingestion.figure_extractor")
+if getattr(extractor, "fitz", None) is None:
+    pytest.skip("PyMuPDF is not installed", allow_module_level=True)  # skips if the module or PyMuPDF is missing
 fitz = extractor.fitz
 extract_figures = extractor.extract_figures
 
@@ -218,8 +220,8 @@ def _find(entry, aliases):
     """Look for any alias as a key, also inside nested dicts."""
     if isinstance(entry, dict):
         for key in aliases:
-            if entry.get(key) not in (None, "", [], {}):
-                return entry[key]
+            if key in entry:
+                return True if entry[key] is None else entry[key]
         for value in entry.values():
             found = _find(value, aliases)
             if found is not None:

@@ -18,6 +18,9 @@ from src.ingestion.figure_extractor import (
     safe_folder_name,
 )
 
+if fitz is None:
+    pytest.skip("PyMuPDF is not installed", allow_module_level=True)
+
 
 def make_image(width, height, color=(0.2, 0.4, 0.8)):
     """A solid-colour RGB image of width x height pixels."""

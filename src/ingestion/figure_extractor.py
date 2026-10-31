@@ -29,7 +29,10 @@ from typing import Any, Dict, List, Optional, Tuple
 try:                                  # PyMuPDF >= 1.24 prefers `import pymupdf`
     import pymupdf as fitz
 except ImportError:                   # older releases only provide `fitz`
-    import fitz  # type: ignore
+    try:
+        import fitz  # type: ignore
+    except ImportError:
+        fitz = None
 
 logger = logging.getLogger(__name__)
 
