@@ -1,0 +1,242 @@
+[
+  {
+    "episode_id": "ep_2a65f881",
+    "timestamp": "2026-10-24T15:54:04.869430+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_b256f6d3",
+    "timestamp": "2026-10-24T15:54:05.850149+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Quantum-Inspired Optimization\nPapers retrieved: 5\n\n1. GPU Parallel Pareto Local Search for Multi-objective QUBO\n   Abstract excerpt: We revisit Pareto Local Search (PLS) for multi-o",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_54bfdf46",
+    "timestamp": "2026-10-28T14:28:03.847228+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_c1c37597",
+    "timestamp": "2026-10-28T14:31:03.412300+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_1a319cb6",
+    "timestamp": "2026-10-28T14:32:58.612128+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_1d7953c2",
+    "timestamp": "2026-10-28T14:35:37.065218+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_9157d4e9",
+    "timestamp": "2026-10-28T14:35:46.577512+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Quantum-Inspired Optimization'\nAnalyzed 1 papers (local benchmark fallback):\n\n1. Progress on quinoline‑based antitumour agents: Mechanistic insights and optimiza",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_fd401f94",
+    "timestamp": "2026-10-28T14:36:37.138849+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_951fd3f5",
+    "timestamp": "2026-10-28T14:36:46.617598+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Quantum-Inspired Optimization'\nAnalyzed 1 papers (local benchmark fallback):\n\n1. Progress on quinoline‑based antitumour agents: Mechanistic insights and optimiza",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_aa686211",
+    "timestamp": "2026-10-28T14:38:45.099256+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_b7712b24",
+    "timestamp": "2026-10-28T14:38:54.652637+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Quantum-Inspired Optimization'\nAnalyzed 1 papers (local benchmark fallback):\n\n1. Progress on quinoline‑based antitumour agents: Mechanistic insights and optimiza",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_ee938ce1",
+    "timestamp": "2026-10-28T14:39:45.480732+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_6c86b739",
+    "timestamp": "2026-10-28T14:39:54.956918+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Quantum-Inspired Optimization'\nAnalyzed 1 papers (local benchmark fallback):\n\n1. Progress on quinoline‑based antitumour agents: Mechanistic insights and optimiza",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_adf4e292",
+    "timestamp": "2026-10-28T14:47:07.412333+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_d2763a79",
+    "timestamp": "2026-10-28T14:47:16.945714+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Quantum-Inspired Optimization'\nAnalyzed 1 papers (local benchmark fallback):\n\n1. Progress on quinoline‑based antitumour agents: Mechanistic insights and optimiza",
+    "verdict": "ACCEPTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: A model variant designed to address the issue be...' succeeded with delta 1.905."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  }
+]

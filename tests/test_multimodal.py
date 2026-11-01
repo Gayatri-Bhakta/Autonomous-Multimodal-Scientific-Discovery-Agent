@@ -26,6 +26,8 @@ try:  # Member 3's module (needs PyMuPDF)
     extract_figures = extractor.extract_figures
 except ImportError:
     extractor = fitz = extract_figures = None
+if fitz is None:  # the module imports without PyMuPDF (fitz = None) but can not extract anything
+    extractor = extract_figures = None
 
 try:  # Member 2's module
     from src.ingestion import chart_reader
