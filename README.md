@@ -78,7 +78,8 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── week1_integration_report.md     # Week 1 architecture & integration audit
 │   ├── mid_review_report.md            # Week 2 Mid-Review integration report
 │   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
-│   └── week3_integration_report.md     # Week 3 multimodal & critic integration report
+│   ├── week3_integration_report.md     # Week 3 multimodal & critic integration report
+│   └── FINAL_ARCHITECTURAL_REPORT.md   # Final enterprise architectural report (Month 1 Delivery)
 ├── examples/
 │   ├── extract_sample_figures.py       # Standalone PDF figure extraction runner
 │   ├── generate_sample_hypotheses.py   # RAG-grounded hypothesis generator runner
@@ -131,6 +132,7 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── test_snapshot.py                # Incremental crawl snapshot tests
 │   ├── test_state.py                   # State management unit tests
 │   └── test_vector_db.py               # ChromaDB embeddings & distance tests
+├── main.py                             # Master CLI entrypoint & pipeline coordinator
 ├── requirements.txt                    # Project dependencies
 └── README.md
 ```
