@@ -79,7 +79,8 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── mid_review_report.md            # Week 2 Mid-Review integration report
 │   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
 │   ├── week3_integration_report.md     # Week 3 multimodal & critic integration report
-│   └── FINAL_ARCHITECTURAL_REPORT.md   # Final enterprise architectural report (Month 1 Delivery)
+│   ├── FINAL_ARCHITECTURAL_REPORT.md   # Final enterprise architectural report (Month 1 Delivery)
+│   └── final_review_deck.md            # Official Month 1 presentation deck & live demo script
 ├── examples/
 │   ├── extract_sample_figures.py       # Standalone PDF figure extraction runner
 │   ├── generate_sample_hypotheses.py   # RAG-grounded hypothesis generator runner
