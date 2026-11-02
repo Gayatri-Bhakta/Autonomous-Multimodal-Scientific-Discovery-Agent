@@ -9,3 +9,4 @@ data/raw/
 venv/
 data/pdfs/
 data/extracted_figures/
+data/holdout_papers/pdfs/
