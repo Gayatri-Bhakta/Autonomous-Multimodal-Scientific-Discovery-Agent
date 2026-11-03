@@ -1,4 +1,4 @@
-# Critic Agent (Week 3)
+# Critic Agent (Week 3) - 04/11/2026
 
 Prepared by: Sachin (Academic Critic Agent & QA Lead)
 Code: `src/agents/critic_agent.py`  |  Tests: `tests/test_critic.py`
