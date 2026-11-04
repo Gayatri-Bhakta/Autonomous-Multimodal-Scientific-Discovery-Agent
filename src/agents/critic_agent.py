@@ -38,6 +38,8 @@ ALPHA = 0.05                 # significance level
 MIN_SAMPLE_SIZE = 30         # minimum observations per group
 NEGLIGIBLE_EFFECT = 0.2      # |Cohen's d| below this is too small to matter
 MIN_HYPOTHESIS_COVERAGE = 0.3  # share of hypothesis key terms the experiment must mention
+COPY_THRESHOLD = 0.8            # a string or line holding this share of the claim's key terms is a copy of the claim
+MIN_TERMS_FOR_COPY_DETECTION = 4  # shorter claims only get exact-copy removal (avoids dropping real result lines)
 
 CRITIC_PROMPT = """You are a rigorous peer reviewer for a top-tier venue (Nature / NeurIPS).
 Review the experiment below. Be strict and specific.
@@ -146,6 +148,19 @@ def _key_terms(text: str) -> set:
     return {w for w in words if w not in _STOPWORDS}
 
 
+_STRING_LITERAL = re.compile(
+    r'"""(.*?)"""|\'\'\'(.*?)\'\'\'|"((?:\\.|[^"\\\n])*)"|\'((?:\\.|[^\'\\\n])*)\'', re.DOTALL
+)
+
+
+def _restates_claim(piece: str, terms: set) -> bool:
+    """True if `piece` holds (almost) all the key terms of the claim, i.e. it is a copy of it."""
+    if len(terms) < MIN_TERMS_FOR_COPY_DETECTION:
+        return False
+    piece = piece.lower()
+    return sum(1 for t in terms if t in piece) / len(terms) >= COPY_THRESHOLD
+
+
 def hypothesis_coverage(hypothesis: str, experiment_text: str) -> float:
     """Share of the hypothesis' key terms that appear in the experiment.
 
@@ -160,6 +175,15 @@ def hypothesis_coverage(hypothesis: str, experiment_text: str) -> float:
     for variant in {hypothesis.strip().lower(), claim.lower()}:
         if variant:
             text = text.replace(variant, " ")
+
+    # Copies of the claim that are not byte-identical: e.g. HYPOTHESIS = '...' written with repr(),
+    # which changes newlines and quotes. Drop string literals and lines that restate the claim.
+    def drop_copy(match):
+        inner = next((g for g in match.groups() if g is not None), "")
+        return " " if _restates_claim(inner, terms) else match.group(0)
+
+    text = _STRING_LITERAL.sub(drop_copy, text)
+    text = "\n".join(line for line in text.splitlines() if not _restates_claim(line, terms))
     return len([t for t in terms if t in text]) / len(terms)
 
 

@@ -249,3 +249,131 @@ def test_llm_can_not_turn_noise_into_acceptance():
 @pytest.mark.parametrize("reply", ["not json at all", '{"critique": []}', RuntimeError("API down")])
 def test_bad_llm_reply_falls_back_to_offline_rules(reply):
     assert review(SIGNIFICANT, llm=FakeLLM(reply)).verdict == "ACCEPTED"
+
+
+# ---------------------------------------------------------------------------
+# Contract with the orchestrator's critic_node (Lead). Protects the hand-off.
+# ---------------------------------------------------------------------------
+def test_contract_used_by_the_orchestrator_critic_node():
+    """src/orchestrator.py calls critique_experiment with these keyword names and reads these fields."""
+    result = critique_experiment(
+        hypothesis=HYP,
+        execution_result=RELEVANT_RESULT,
+        stats=SIGNIFICANT,
+        code="print('pruning memory perplexity')",
+    )
+    assert result.verdict in {"ACCEPTED", "REJECTED", "NEEDS_REPLICATION"}
+    assert isinstance(result.critique, list) and all(isinstance(line, str) for line in result.critique)
+    assert result.p_value == SIGNIFICANT["p_value"]
+
+
+def _critic_node_or_skip():
+    orchestrator = pytest.importorskip("src.orchestrator")
+    if not hasattr(orchestrator, "critic_node"):
+        pytest.skip("critic_node is not in this branch yet (Lead)")
+    return orchestrator.critic_node
+
+
+def test_critic_node_accepts_a_real_significant_result():
+    state = {
+        "research_topic": "Dynamic Pruning",
+        "selected_hypothesis": HYP,
+        "execution_result": RELEVANT_RESULT,
+        "statistical_metrics": SIGNIFICANT,
+        "experiment_iteration": 0,
+        "logs": [],
+    }
+    out = _critic_node_or_skip()(state)
+    assert out["critic_verdict"] == "ACCEPTED"
+    assert out["experiment_iteration"] == 1
+
+
+def test_critic_node_asks_for_replication_when_no_statistics_exist():
+    state = {
+        "research_topic": "Dynamic Pruning",
+        "selected_hypothesis": HYP,
+        "execution_result": RELEVANT_RESULT,
+        "experiment_iteration": 0,
+        "logs": [],
+    }
+    out = _critic_node_or_skip()(state)
+    assert out["critic_verdict"] == "NEEDS_REPLICATION"
+
+
+# ---------------------------------------------------------------------------
+# Check 1 must not be fooled by a script that merely embeds the claim
+# ---------------------------------------------------------------------------
+LONG_HYP = "Dynamic token pruning reduces inference memory.\nSecond sentence: it's tested with 'quotes' on long contexts."
+
+
+def test_claim_embedded_with_repr_does_not_count_as_testing_it():
+    """repr() changes newlines and quotes, so a plain text match misses the copy."""
+    code = f"HYPOTHESIS = {LONG_HYP!r}\nprint(HYPOTHESIS)\nprint('Baseline mean: 100')"
+    assert hypothesis_coverage(LONG_HYP, code + "\n" + LONG_HYP) < 0.3
+
+    result = critique_experiment(LONG_HYP, LONG_HYP + "\nBaseline mean: 100", SIGNIFICANT, code=code)
+    assert result.verdict == "REJECTED"
+    assert result.checks.hypothesis_tested is False
+
+
+def test_a_real_result_line_that_mentions_the_claim_still_counts():
+    claim = "Dynamic token pruning reduces inference memory."
+    real = "Measured memory with and without token pruning: memory dropped 31%."
+    assert hypothesis_coverage(claim, real) >= 0.3
+
+
+def test_short_claims_are_not_over_stripped():
+    claim = "Pruning reduces memory."
+    assert hypothesis_coverage(claim, "Pruning reduces memory by 31% in our runs.") == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Integration with Member 4's statistics engine (skipped until src/utils/stats_validator.py exists)
+# ---------------------------------------------------------------------------
+def _validator():
+    return pytest.importorskip("src.utils.stats_validator")
+
+
+def test_real_validator_output_feeds_the_critic():
+    np = pytest.importorskip("numpy")
+    validator = _validator()
+    rng = np.random.default_rng(1)
+    baseline, treatment = rng.normal(100, 10, 40), rng.normal(112, 10, 40)
+
+    # The group sizes are added here until the validator reports them itself (see the xfail test below).
+    stats = {**validator.validate_experiment(baseline, treatment), "n_baseline": 40, "n_treatment": 40}
+    result = review(stats)
+
+    assert result.verdict == "ACCEPTED"
+    assert result.p_value == stats["p_value"]
+
+
+def test_critic_with_the_real_validator_accepts_real_effects_and_rejects_noise():
+    np = pytest.importorskip("numpy")
+    validator = _validator()
+    runs = 100
+    accepted_real = accepted_noise = 0
+    for seed in range(runs):
+        rng = np.random.default_rng(seed)
+        baseline = rng.normal(100, 10, 40)
+        for kind, treatment in (("real", rng.normal(112, 10, 40)), ("noise", rng.normal(100, 10, 40))):
+            stats = {**validator.validate_experiment(baseline, treatment), "n_baseline": 40, "n_treatment": 40}
+            if review(stats).verdict == "ACCEPTED":
+                accepted_real += kind == "real"
+                accepted_noise += kind == "noise"
+    assert accepted_real >= 0.95 * runs
+    assert accepted_noise <= 0.10 * runs
+
+
+@pytest.mark.xfail(strict=False, reason="OPEN: validate_experiment does not return n_baseline / n_treatment, "
+                                        "so the Critic can not confirm the sample size and never accepts")
+def test_validator_reports_the_group_sizes():
+    result = _validator().validate_experiment([1, 2, 3, 4], [2, 3, 4, 6])
+    assert result["n_baseline"] == 4 and result["n_treatment"] == 4
+
+
+@pytest.mark.xfail(strict=False, reason="OPEN: the orchestrator's code_executor_node imports "
+                                        "compute_statistics_from_output, which stats_validator does not define yet, "
+                                        "so the real validator is never used in the pipeline")
+def test_validator_provides_the_function_the_orchestrator_imports():
+    assert callable(getattr(_validator(), "compute_statistics_from_output", None))
