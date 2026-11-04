@@ -237,11 +237,23 @@ def test_dashboard_charts_can_be_built_from_a_tracked_run(normal_run):
 # ---------------------------------------------------------------------------
 # Stages owned by other members: skipped until their files exist in this branch
 # ---------------------------------------------------------------------------
-def test_paper_generation_stage():
+def test_paper_generation_stage(tmp_path):
     pytest.importorskip("src.agents.synthesizer_agent",
                         reason="Member 2's synthesizer_agent.py is not in this branch yet")
-    pytest.skip("synthesizer_agent.py exists now: extend this test with its real functions "
-                "(verified numbers + citations -> .tex -> PDF or HTML fallback)")
+    from src.agents.synthesizer_agent import generate_latex_paper
+
+    sample_state = {
+        "research_topic": "AI agent time horizons",
+        "selected_hypothesis": "Pruning saves inference memory",
+        "execution_result": "Baseline: 100\nMethod: 110\nMetric delta: +10",
+        "critic_verdict": "ACCEPTED",
+        "statistical_metrics": {"p_value": 0.005, "effect_size_cohens_d": 1.1},
+    }
+    res = generate_latex_paper(sample_state, output_dir=str(tmp_path))
+    assert res["status"] == "SUCCESS"
+    assert Path(res["tex_path"]).exists()
+    assert Path(res["pdf_path"]).exists()
+    assert Path(res["bib_path"]).exists()
 
 
 def test_master_entrypoint_shows_help():

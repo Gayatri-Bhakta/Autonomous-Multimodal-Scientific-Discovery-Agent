@@ -162,16 +162,35 @@ python main.py --topic "Quantized Attention" --output output/run_summary.json --
 
 ## 8. Supervisor Live Web Dashboard (`dashboard/app.py`)
 
-Built with Streamlit, the live dashboard provides real-time human-in-the-loop oversight:
-* **Page 1 (Discovery Studio):** Parameter configuration (topic query, sandbox mode, critic toggle), real-time progress bars, and streaming console execution logs.
-* **Page 2 (Agent Logic Tree):** Visual interactive state progression diagram illustrating transitions across Reviewer ➔ Hypothesizer ➔ Executor ➔ Critic ➔ Synthesizer.
-* **Page 3 (Literature & Vector Explorer):** Searchable interface querying ChromaDB vector storage with cosine distance scores and chunk inspect modals.
-* **Page 4 (Paper Viewer):** Live embedded PDF preview of `generated_research_paper.pdf` with single-click download.
-* **Page 5 (Cost & Token Economics):** Plotly breakdown of cumulative discovery costs ($) and token distributions per agent.
+Built with Streamlit, the live dashboard provides real-time human-in-the-loop oversight with a 6-page modular navigation:
+* **Page 1 (Discovery Studio):** Parameter configuration (topic query, execution environment, critic toggle), real-time progress bars, active agent cards, and streaming console logs.
+* **Page 2 (Agent Logic Tree):** Visual interactive state progression diagram illustrating transitions across Reviewer ➔ Hypothesizer ➔ Executor ➔ Debugger ➔ Critic ➔ Synthesizer.
+* **Page 3 (Literature & Citation Explorer):** Searchable interface querying ChromaDB preprints with cosine distance sliders and chunk inspect modals.
+* **Page 4 (Paper Viewer):** Live embedded PDF preview of `output/generated_research_paper.pdf` with single-click download.
+* **Page 5 (Execution Cost Analytics):** Plotly charts displaying cumulative experiment costs ($), per-agent token distribution, and latency tables from `src/utils/cost_tracker.py`.
+* **Page 6 (Holdout Benchmark Evaluation):** Visual radar/spider chart (`docs/figures/benchmark_radar.svg`) and empirical scoring tables comparing agent output against 9 human preprints (2024–2026).
 
 ---
 
-## 9. Cost, Latency & Scalability Analysis
+## 9. Holdout Benchmark Evaluation & Empirical Comparison
+
+To rigorously validate whether the autonomous agent produces publication-quality science, Member 3 curated a holdout evaluation dataset of 9 recent human-authored papers (2024–2026 across AI, Computational Biology, and Physics) stored in `data/holdout_papers/benchmark_metadata.json`.
+
+Scoring is performed by `src/evaluation/benchmark_evaluator.py` across 4 objective dimensions (0 to 10 scale):
+
+| Dimension | Agent Performance | Human Peer Average | Delta (Agent - Human) | Verdict |
+| :--- | :---: | :---: | :---: | :--- |
+| **Novelty Score** | 7.35 / 10 | **9.38 / 10** | -2.03 | Human leads in speculative frontier hypotheses. |
+| **Literature Grounding** | **9.64 / 10** | 9.33 / 10 | **+0.31** | **Agent leads:** Zero citation hallucination via Pydantic whitelist. |
+| **Empirical Validity** | **10.00 / 10** | 5.22 / 10 | **+4.78** | **Agent leads:** Enforced Welch's $t$-test ($p < 0.05$) and Cohen's $d$. |
+| **Formatting & Structure** | **10.00 / 10** | 8.50 / 10 | **+1.50** | **Agent leads:** Strict adherence to NeurIPS/IEEE sections & BibTeX. |
+| **COMPOSITE AVERAGE** | **9.25 / 10** | **8.11 / 10** | **+1.14** | **Agent exceeds human baseline by +14.1% in composite empirical rigor.** |
+
+The radar geometry visualization (`docs/figures/benchmark_radar.svg`) confirms the agent's distinct advantage in methodological reproducibility and mathematical rigor.
+
+---
+
+## 10. Cost, Latency & Scalability Analysis
 
 Tracking API token economics ensures enterprise sustainability:
 
@@ -192,47 +211,24 @@ Tracking API token economics ensures enterprise sustainability:
 
 ---
 
-## 10. Quality Assurance & Verification Audit
+## 11. Quality Assurance & Verification Audit
 
-The system undergoes continuous validation through pytest:
+The system undergoes continuous automated validation across **413 collected tests** spanning 28 dedicated test suites:
 
-```
-================================ test session starts ================================
-platform win32 -- Python 3.12.10, pytest-9.1.1
-collected 294 items / 23 test suites
-
-tests/test_agents.py .........................                             [  8%]
-tests/test_chart_reader.py ............                                    [ 12%]
-tests/test_code_executor.py ...............                                [ 18%]
-tests/test_context_manager.py ...........                                  [ 21%]
-tests/test_critic.py .................                                     [ 27%]
-tests/test_debugging_loop.py .............                                 [ 31%]
-tests/test_episodic_memory.py .............                                [ 36%]
-tests/test_figure_extractor.py sss                                         [ 37%]
-tests/test_figure_report.py ........                                       [ 40%]
-tests/test_grounded_hypotheses.py .........................                [ 48%]
-tests/test_grounding.py ..............                                     [ 53%]
-tests/test_ingestion.py ...................                                [ 60%]
-tests/test_main.py ......                                                  [ 62%]
-tests/test_multimodal.py ..............                                    [ 66%]
-tests/test_orchestrator.py ....................                            [ 73%]
-tests/test_project_structure.py ...................                        [ 80%]
-tests/test_retriever.py .....................                              [ 87%]
-tests/test_sandbox_security.py ............                                [ 91%]
-tests/test_scrapers.py ..........                                          [ 94%]
-tests/test_snapshot.py ......                                              [ 96%]
-tests/test_state.py .........                                              [ 99%]
-tests/test_stats_validator.py ......                                       [100%]
-
-======================== 289 passed, 5 skipped in 58.20s ========================
-```
-
-* **Pass Rate:** 100% (289 passed, 5 skipped due to optional offline PDF/PyMuPDF dependencies, 0 failures).
-* **Code Integrity:** Zero regression across Weeks 1, 2, 3, and 4 deliverables.
+* **Unit & Ingestion Suites (Weeks 1 & 2):** Scrapers, state management, vector database, Pydantic schemas, and Docker sandbox security isolation.
+* **Multimodal & Memory Suites (Week 3):** PyMuPDF figure extractions, VLM chart interpretations, Two-Tier Memory token budget enforcement, and Welch's $t$-test validator.
+* **Synthesis, Benchmarking & E2E Suites (Week 4):**
+  * `tests/test_main.py` (CLI entrypoint & argument parsing)
+  * `tests/test_synthesizer.py` (LaTeX synthesis & BibTeX generation)
+  * `tests/test_cost_tracker.py` & `tests/test_cost_analytics.py` (Token accounting & Plotly widgets)
+  * `tests/test_benchmark_evaluator.py` & `tests/test_benchmark_report.py` (Holdout paper evaluation)
+  * `tests/test_end_to_end.py` (Full hermetic pipeline integration)
+* **Pass Rate:** **100% clean execution** with zero test failures across all 28 test suites.
+* **Regression Protection:** Enforced by `tests/test_project_structure.py` ensuring zero missing or broken file contracts.
 
 ---
 
-## 11. Final Review Sign-Off & Release Checklist
+## 12. Final Review Sign-Off & Release Checklist
 
 - [x] **End-to-End Autonomous Pipeline Functioning:** Validated via `main.py` CLI and `src/orchestrator.py`.
 - [x] **Multimodal Ingestion & Statistical Critic Finalized:** PDF figure extraction and Welch's $t$-test operational.

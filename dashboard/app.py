@@ -20,6 +20,8 @@ page = st.sidebar.radio(
         "Agent Logic Tree",
         "Literature & Citations",
         "Paper Viewer",
+        "Cost Analytics",
+        "Holdout Benchmark",
     ],
 )
 
@@ -142,3 +144,20 @@ elif page == "Literature & Citations":
 elif page == "Paper Viewer":
     st.header("Generated Paper")
     render_paper_viewer()
+
+elif page == "Cost Analytics":
+    try:
+        from components.cost_analytics import render_cost_analytics
+        render_cost_analytics()
+    except Exception as exc:
+        st.error(f"Failed to render cost analytics: {exc}")
+
+elif page == "Holdout Benchmark":
+    st.header("Holdout Benchmark Evaluation (Agent vs. Human)")
+    st.caption("Graded across 9 human-authored papers (2024-2026) across AI, Computational Biology, and Physics.")
+    radar_path = Path("docs/figures/benchmark_radar.svg")
+    if radar_path.exists():
+        st.image(str(radar_path), caption="Agent vs. Human Radar Chart (4 Dimensions)")
+    report_path = Path("docs/evaluation_benchmark_report.md")
+    if report_path.exists():
+        st.markdown(report_path.read_text(encoding="utf-8"))

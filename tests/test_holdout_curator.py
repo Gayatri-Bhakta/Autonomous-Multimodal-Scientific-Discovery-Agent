@@ -2,7 +2,15 @@ import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import fitz
+import pytest
+
+try:
+    import fitz
+except ImportError:
+    fitz = None
+
+if fitz is None:
+    pytest.skip("PyMuPDF is not installed", allow_module_level=True)
 
 from src.evaluation.holdout_curator import (
     HOLDOUT_PLAN,
