@@ -209,6 +209,69 @@ def build_charts(result: Dict[str, Any], figure_dir: Path = FIGURE_DIR) -> Dict[
 
 
 # ---------------------------------------------------------------- report
+def findings(result: Dict[str, Any]) -> List[str]:
+    """Plain-language findings computed from the scores."""
+    out: List[str] = []
+    human = result["human"]
+    avg = result["human_average"]
+    agent = result.get("agent")
+    if agent:
+        rows = [r for r in comparison_rows(result) if r["dimension"] != "Overall"]
+        best = max(rows, key=lambda r: r["gap"])
+        worst = min(rows, key=lambda r: r["gap"])
+        out.append(f"Overall the agent scored {agent['overall']:.2f} against a human average of "
+                   f"{avg['overall']:.2f} ({agent['overall'] - avg['overall']:+.2f}).")
+        if best["gap"] > 0:
+            out.append(f"The agent's biggest lead is **{best['dimension']}** ({best['gap']:+.2f}): "
+                       "every agent result passes through the statistics validator, while many "
+                       "human papers do not report p-values or confidence intervals.")
+        if worst["gap"] < 0:
+            out.append(f"The agent's biggest gap is **{worst['dimension']}** ({worst['gap']:+.2f}): "
+                       "its hypothesis stays close to the papers it retrieved, so it extends existing "
+                       "work rather than proposing a clearly new direction.")
+    weakest = min(DIMENSIONS, key=lambda d: avg[d])
+    out.append(f"Across the {len(human)} human papers the weakest dimension is "
+               f"**{LABELS[weakest]}** (average {avg[weakest]:.2f}).")
+    domains = domain_averages(human)
+    if len(domains) > 1:
+        top = max(domains.items(), key=lambda kv: kv[1]["overall"])
+        low = min(domains.items(), key=lambda kv: kv[1]["overall"])
+        out.append(f"By domain, {top[0]} papers scored highest overall ({top[1]['overall']:.2f}) "
+                   f"and {low[0]} lowest ({low[1]['overall']:.2f}).")
+    if human:
+        best_paper = max(human, key=lambda s: s["overall"])
+        out.append(f"The highest-scoring human paper is {best_paper['paper_id']} "
+                   f"({best_paper['overall']:.2f}).")
+    return out
+
+
+LIMITATIONS = [
+    "**Different evidence for agent and humans.** The agent's empirical score uses the real p-value, "
+    "effect size and confidence interval from the critic; human papers are scored on what their text "
+    "reports, so a strong human paper that does not print p-values scores lower.",
+    "**Novelty is word-based.** TF-IDF similarity measures shared vocabulary, not shared ideas. "
+    "Human papers are compared with the other holdout papers, which come from different domains, so "
+    "their novelty scores are high by construction.",
+    "**Grounding for human papers is a proxy.** We count references instead of checking each one.",
+    "**PDF text extraction is imperfect.** Two-column layouts and appendices can hide section "
+    "headings or merge references, which lowers formatting and grounding scores slightly.",
+    "**Small holdout set.** 9 papers (3 per domain) is enough for a roadmap, not for statistical "
+    "claims about agents versus humans.",
+]
+
+NEXT_STEPS = [
+    "Score the synthesizer agent's real generated paper instead of the sample.",
+    "Run the agent on the same topics as the holdout papers for a like-for-like comparison.",
+    "Replace TF-IDF with sentence embeddings (once the Mac PyTorch issue is fixed) for semantic novelty.",
+    "Add an LLM-as-judge score next to the rule-based score and check how often they agree.",
+    "Grow the holdout set to 30+ papers and report confidence intervals for each dimension.",
+]
+
+
+def _bullets(items: Sequence[str]) -> str:
+    return "\n".join(f"- {i}" for i in items)
+
+
 def build_report(result: Dict[str, Any], charts: Dict[str, str],
                  report_path: Path = REPORT_FILE) -> str:
     rel = lambda p: Path(p).relative_to(report_path.parent).as_posix() if Path(p).is_relative_to(report_path.parent) else p  # noqa: E731
@@ -240,6 +303,10 @@ human-written papers (2024–2026, AI, computational biology and physics) on 4 d
 
 {markdown_papers(result)}
 
+## Key findings
+
+{_bullets(findings(result))}
+
 ## How each score is computed
 
 | Dimension | Agent paper | Human paper |
@@ -250,6 +317,22 @@ human-written papers (2024–2026, AI, computational biology and physics) on 4 d
 | Formatting & Structure | Required sections (Abstract, Introduction, Method, Results, Conclusion, References) 6, abstract 100–300 words 1.5, figures 1, tables 0.5, 5+ references 1 | Same |
 
 Overall = mean of the 4 dimensions. Scoring is deterministic and offline, so every run gives the same numbers.
+
+## Limitations
+
+{_bullets(LIMITATIONS)}
+
+## Next steps
+
+{_bullets(NEXT_STEPS)}
+
+## Reproduce
+
+```bash
+python -m src.evaluation.holdout_curator
+python -m src.evaluation.benchmark_evaluator --agent examples/sample_agent_output.json --save data/holdout_papers/benchmark_scores.json
+python -m src.evaluation.benchmark_report
+```
 """
 
 

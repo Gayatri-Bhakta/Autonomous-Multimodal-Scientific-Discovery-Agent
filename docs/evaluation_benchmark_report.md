@@ -1,6 +1,6 @@
 # Evaluation Benchmark Report
 
-Member 3 (Afrah) · Week 4 · generated 2026-11-04 by `python -m src.evaluation.benchmark_report`
+Member 3 (Afrah) · Week 4 · generated 2026-11-05 by `python -m src.evaluation.benchmark_report`
 
 The agent's research paper is graded against a holdout set of 9 recent
 human-written papers (2024–2026, AI, computational biology and physics) on 4 dimensions, each 0–10.
@@ -42,6 +42,15 @@ The agent row uses **examples/sample_agent_output.json**, a sample paper. Replac
 | [arxiv:2607.05559v1](https://arxiv.org/abs/2607.05559v1) | Physics | EquiFiLM: Charge-Conditioned Equivariant Force Fields via... | 9.37 | 10.00 | 5.00 | 10.00 | 8.59 |
 | **Agent** (agent:sample-amr-001) | Computational Biology | Combining Efflux Pump Inhibition with Low-Dose Beta-Lacta... | 7.35 | 9.64 | 10.00 | 10.00 | 9.25 |
 
+## Key findings
+
+- Overall the agent scored 9.25 against a human average of 8.11 (+1.14).
+- The agent's biggest lead is **Empirical Validity** (+4.78): every agent result passes through the statistics validator, while many human papers do not report p-values or confidence intervals.
+- The agent's biggest gap is **Novelty** (-2.03): its hypothesis stays close to the papers it retrieved, so it extends existing work rather than proposing a clearly new direction.
+- Across the 9 human papers the weakest dimension is **Empirical Validity** (average 5.22).
+- By domain, AI papers scored highest overall (8.50) and Physics lowest (7.59).
+- The highest-scoring human paper is arxiv:2605.27355v2 (9.15).
+
 ## How each score is computed
 
 | Dimension | Agent paper | Human paper |
@@ -52,3 +61,27 @@ The agent row uses **examples/sample_agent_output.json**, a sample paper. Replac
 | Formatting & Structure | Required sections (Abstract, Introduction, Method, Results, Conclusion, References) 6, abstract 100–300 words 1.5, figures 1, tables 0.5, 5+ references 1 | Same |
 
 Overall = mean of the 4 dimensions. Scoring is deterministic and offline, so every run gives the same numbers.
+
+## Limitations
+
+- **Different evidence for agent and humans.** The agent's empirical score uses the real p-value, effect size and confidence interval from the critic; human papers are scored on what their text reports, so a strong human paper that does not print p-values scores lower.
+- **Novelty is word-based.** TF-IDF similarity measures shared vocabulary, not shared ideas. Human papers are compared with the other holdout papers, which come from different domains, so their novelty scores are high by construction.
+- **Grounding for human papers is a proxy.** We count references instead of checking each one.
+- **PDF text extraction is imperfect.** Two-column layouts and appendices can hide section headings or merge references, which lowers formatting and grounding scores slightly.
+- **Small holdout set.** 9 papers (3 per domain) is enough for a roadmap, not for statistical claims about agents versus humans.
+
+## Next steps
+
+- Score the synthesizer agent's real generated paper instead of the sample.
+- Run the agent on the same topics as the holdout papers for a like-for-like comparison.
+- Replace TF-IDF with sentence embeddings (once the Mac PyTorch issue is fixed) for semantic novelty.
+- Add an LLM-as-judge score next to the rule-based score and check how often they agree.
+- Grow the holdout set to 30+ papers and report confidence intervals for each dimension.
+
+## Reproduce
+
+```bash
+python -m src.evaluation.holdout_curator
+python -m src.evaluation.benchmark_evaluator --agent examples/sample_agent_output.json --save data/holdout_papers/benchmark_scores.json
+python -m src.evaluation.benchmark_report
+```
