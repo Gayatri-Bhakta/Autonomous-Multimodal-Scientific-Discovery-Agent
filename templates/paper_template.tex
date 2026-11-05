@@ -1,0 +1,58 @@
+% =====================================================================
+% Academic conference paper template (IEEE / NeurIPS inspired).
+% Uses only the standard "article" class plus common packages, so it
+% compiles with a default MiKTeX or TeX Live installation.
+%
+% Placeholders look like <<NAME>> and are filled by SynthesizerAgent:
+%   <<TITLE>> <<AUTHORS>> <<DRAFT_NOTICE>> <<ABSTRACT>> <<INTRODUCTION>>
+%   <<EXPERIMENTAL_SETUP>> <<RESULTS_TABLE>> <<RESULTS_DISCUSSION>>
+%   <<FIGURES>> <<CONCLUSION>> <<BIBLIOGRAPHY>>
+% =====================================================================
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[letterpaper,margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0pt}
+\renewcommand{\abstractname}{Abstract}
+
+\title{<<TITLE>>}
+\author{<<AUTHORS>>}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent{\footnotesize <<DRAFT_NOTICE>>}
+\medskip
+
+\begin{abstract}
+<<ABSTRACT>>
+\end{abstract}
+
+\section{Introduction}
+<<INTRODUCTION>>
+
+\section{Experimental Setup}
+<<EXPERIMENTAL_SETUP>>
+
+\section{Results}
+<<RESULTS_TABLE>>
+
+<<RESULTS_DISCUSSION>>
+
+<<FIGURES>>
+
+\section{Conclusion}
+<<CONCLUSION>>
+
+<<BIBLIOGRAPHY>>
+
+\end{document}
