@@ -2,7 +2,7 @@ import time
 
 import streamlit as st
 
-from components.agent_trace import render_agent_trace
+from components.agent_trace import AGENTS, render_agent_trace
 from components.holdout_benchmark import render_holdout_benchmark
 from components.paper_viewer import render_paper_viewer
 
