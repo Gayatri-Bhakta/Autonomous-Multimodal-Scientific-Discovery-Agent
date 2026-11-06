@@ -14,6 +14,13 @@ Honesty rules
   * The default prices are editable placeholders, not an official price list. Check the
     provider's pricing page and pass your own table: CostTracker(pricing={"my-model": (in, out)}).
 
+Simplest hook for the whole pipeline (wraps every graph node, nothing else is edited):
+    tracker = CostTracker(label=topic)
+    with track_pipeline(tracker):              # the graph must be BUILT inside this block
+        app = build_orchestrator(enable_critic=True)
+        result = app.invoke({"research_topic": topic})
+    append_run(tracker)                         # the dashboard widget reads this file
+
 How to hook it into the agents WITHOUT editing them
     tracker = CostTracker()
     llm = tracker.wrap_llm(llm_client_from_env(), agent="hypothesis_generator", model="gpt-4o")
@@ -27,6 +34,7 @@ Any object with ``complete(prompt) -> str`` can be wrapped. If it also sets ``la
 """
 
 import functools
+import importlib
 import json
 import math
 import threading
@@ -250,6 +258,37 @@ class TrackedLLM:
 
     def __getattr__(self, name: str) -> Any:  # everything else (provider, model, ...) comes from the wrapped client
         return getattr(self._llm, name)
+
+
+# Orchestrator node functions and the agent name they are reported under.
+PIPELINE_NODES: Dict[str, str] = {
+    "literature_reviewer_node": "literature_reviewer",
+    "hypothesis_generator_node": "hypothesis_generator",
+    "code_executor_node": "code_executor",
+    "debugger_node": "debugger",
+    "critic_node": "critic",
+}
+
+
+@contextmanager
+def track_pipeline(tracker: CostTracker, module: Any = None, nodes: Optional[Dict[str, str]] = None):
+    """Time every graph node of the orchestrator while the block runs; the originals are restored after.
+
+    LangGraph captures the node functions when the graph is built, so build AND run the graph inside
+    the ``with`` block. Nodes missing from the module are skipped.
+    """
+    module = module or importlib.import_module("src.orchestrator")
+    originals: Dict[str, Callable[..., Any]] = {}
+    for attr, agent in (nodes or PIPELINE_NODES).items():
+        node = getattr(module, attr, None)
+        if callable(node):
+            originals[attr] = node
+            setattr(module, attr, tracker.wrap_node(agent, node))
+    try:
+        yield tracker
+    finally:
+        for attr, node in originals.items():
+            setattr(module, attr, node)
 
 
 # ---------------------------------------------------------------------------

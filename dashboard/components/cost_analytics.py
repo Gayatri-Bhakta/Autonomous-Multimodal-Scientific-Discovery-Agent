@@ -85,6 +85,22 @@ def token_distribution_figure(run: Optional[Dict[str, Any]]):
 
 
 # ---------------------------------------------------------------------------
+# Chart 3: time spent in each agent node
+# ---------------------------------------------------------------------------
+def node_latency_figure(run: Optional[Dict[str, Any]]):
+    """Bars: seconds spent in each graph node (reported even when no LLM was called)."""
+    go = _go()
+    nodes = {name: a["node_latency_s"] for name, a in (run or {}).get("by_agent", {}).items()
+             if a.get("node_latency_s", 0) > 0}
+    names = sorted(nodes, key=lambda n: nodes[n], reverse=True)
+    fig = go.Figure(go.Bar(x=names, y=[round(nodes[n], 4) for n in names], name="Node time"))
+    fig.update_layout(title="Time per agent node", xaxis_title="Agent node", yaxis_title="Seconds")
+    if not names:
+        fig.add_annotation(text="No node timings recorded", showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5)
+    return fig
+
+
+# ---------------------------------------------------------------------------
 # The Streamlit widget
 # ---------------------------------------------------------------------------
 def agent_table(run: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -134,6 +150,9 @@ def render_cost_analytics(
     columns[2].metric("LLM calls", run.get("calls", 0))
     columns[3].metric("LLM time", f"{run.get('llm_latency_s', 0.0):.1f} s")
 
+    if not run.get("calls"):
+        st.caption("No LLM calls were recorded for this run (the offline rule-based agents do not call an LLM), "
+                   "so cost and tokens are zero. Node timings are shown below.")
     if run.get("estimated_calls"):
         st.caption(f"{run['estimated_calls']} of {run.get('calls', 0)} calls use estimated token counts "
                    "(about 4 characters per token), not provider-reported numbers.")
@@ -144,6 +163,7 @@ def render_cost_analytics(
 
     st.plotly_chart(cumulative_cost_figure(runs), key=f"{key_prefix}_cumulative")
     st.plotly_chart(token_distribution_figure(run), key=f"{key_prefix}_tokens")
+    st.plotly_chart(node_latency_figure(run), key=f"{key_prefix}_latency")
     rows = agent_table(run)
     if rows:
         st.dataframe(rows)

@@ -12,6 +12,7 @@ from dashboard.components.cost_analytics import (  # noqa: E402
     agent_table,
     cumulative_cost_figure,
     demo_runs,
+    node_latency_figure,
     token_distribution_figure,
 )
 from src.utils.cost_tracker import CostTracker, append_run  # noqa: E402
@@ -121,14 +122,14 @@ def run_widget(body):
     return app
 
 
-def test_widget_shows_metrics_and_both_charts(tmp_path):
+def test_widget_shows_metrics_and_all_charts(tmp_path):
     log = tmp_path / "log.json"
     append_run(make_run("run-a"), log)
     app = run_widget(f"render_cost_analytics(log_path={str(log)!r})")
     labels = [m.label for m in app.metric]
     assert labels == ["Total cost", "Total tokens", "LLM calls", "LLM time"]
     assert [m.value for m in app.metric][1:3] == ["5,700", "3"]
-    assert len(app.get("plotly_chart")) == 2
+    assert len(app.get("plotly_chart")) == 3
 
 
 def test_widget_without_data_shows_a_friendly_message(tmp_path):
@@ -165,3 +166,32 @@ def test_widget_can_show_a_live_tracker():
         "render_cost_analytics(tracker=t)"
     )
     assert app.metric[2].value == "1"
+
+
+# ---------------------------------------------------------------------------
+# Chart 3: time per agent node (works even when no LLM was called)
+# ---------------------------------------------------------------------------
+def test_node_latency_chart_shows_each_timed_node_slowest_first():
+    tracker = CostTracker()
+    tracker.add_node_latency("critic", 0.5)
+    tracker.add_node_latency("code_executor", 2.0)
+    tracker.add_node_latency("literature_reviewer", 1.0)
+    fig = node_latency_figure(tracker.to_dict())
+    assert list(fig.data[0].x) == ["code_executor", "literature_reviewer", "critic"]
+    assert list(fig.data[0].y) == [2.0, 1.0, 0.5]
+
+
+@pytest.mark.parametrize("run", [None, {}, {"by_agent": {"a": {"calls": 1}}}])
+def test_node_latency_chart_with_no_timings_does_not_crash(run):
+    fig = node_latency_figure(run)
+    assert "No node timings" in fig.layout.annotations[0].text
+
+
+def test_widget_says_so_when_a_run_made_no_llm_calls(tmp_path):
+    tracker = CostTracker(run_id="offline")
+    tracker.add_node_latency("code_executor", 1.5)
+    log = tmp_path / "log.json"
+    append_run(tracker, log)
+    app = run_widget(f"render_cost_analytics(log_path={str(log)!r})")
+    assert any("No LLM calls were recorded" in c.value for c in app.caption)
+    assert len(app.get("plotly_chart")) == 3
