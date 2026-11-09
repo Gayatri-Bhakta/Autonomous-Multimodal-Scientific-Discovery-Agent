@@ -12,6 +12,7 @@ from src.utils.cost_tracker import (
     estimate_tokens,
     format_cost,
     load_runs,
+    track_pipeline,
 )
 
 
@@ -285,3 +286,55 @@ def test_round_trip_keeps_the_numbers(tmp_path):
 @pytest.mark.parametrize("value, text", [(None, "unknown"), (0.0, "$0.0000"), (0.0075, "$0.0075"), (12.5, "$12.50")])
 def test_cost_formatting(value, text):
     assert format_cost(value) == text
+
+
+# ---------------------------------------------------------------------------
+# track_pipeline: one-line hook for the whole orchestrator
+# ---------------------------------------------------------------------------
+def fake_orchestrator():
+    import types
+
+    module = types.SimpleNamespace()
+    module.literature_reviewer_node = lambda state: {"a": 1}
+    module.code_executor_node = lambda state: {"b": 2}
+    module.critic_node = lambda state: {"c": 3}
+    return module
+
+
+def test_track_pipeline_times_the_nodes_inside_the_block():
+    tracker, module = CostTracker(), fake_orchestrator()
+    with track_pipeline(tracker, module):
+        assert module.code_executor_node({}) == {"b": 2}
+        module.critic_node({})
+    assert set(tracker.node_latency_s) == {"code_executor", "critic"}
+
+
+def test_track_pipeline_restores_the_original_functions_afterwards():
+    tracker, module = CostTracker(), fake_orchestrator()
+    originals = (module.literature_reviewer_node, module.code_executor_node, module.critic_node)
+    with track_pipeline(tracker, module):
+        assert module.critic_node is not originals[2]
+    assert (module.literature_reviewer_node, module.code_executor_node, module.critic_node) == originals
+
+
+def test_track_pipeline_restores_even_when_the_block_fails():
+    tracker, module = CostTracker(), fake_orchestrator()
+    original = module.critic_node
+    with pytest.raises(RuntimeError):
+        with track_pipeline(tracker, module):
+            raise RuntimeError("boom")
+    assert module.critic_node is original
+
+
+def test_track_pipeline_skips_nodes_the_module_does_not_have():
+    tracker, module = CostTracker(), fake_orchestrator()  # no debugger_node, no hypothesis_generator_node
+    with track_pipeline(tracker, module):
+        assert not hasattr(module, "debugger_node")
+
+
+def test_track_pipeline_accepts_a_custom_node_map():
+    tracker, module = CostTracker(), fake_orchestrator()
+    with track_pipeline(tracker, module, nodes={"critic_node": "reviewer"}):
+        module.critic_node({})
+        module.code_executor_node({})  # not in the map: not timed
+    assert set(tracker.node_latency_s) == {"reviewer"}

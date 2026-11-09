@@ -112,16 +112,12 @@ def graph(retriever, workspace, tracker, offline):
     """The real LangGraph pipeline, with every node timed by the cost tracker."""
     from src import orchestrator
     from src.memory import episodic_memory
+    from src.utils.cost_tracker import track_pipeline
 
     mp = pytest.MonkeyPatch()
     mp.setattr(episodic_memory, "DEFAULT_STORAGE_PATH", workspace / "episodes.json")  # keep the repo clean
-    for node, agent in (("literature_reviewer_node", "literature_reviewer"),
-                        ("hypothesis_generator_node", "hypothesis_generator"),
-                        ("code_executor_node", "code_executor"),
-                        ("debugger_node", "debugger"),
-                        ("critic_node", "critic")):
-        mp.setattr(orchestrator, node, tracker.wrap_node(agent, getattr(orchestrator, node)))
-    yield orchestrator.build_orchestrator(enable_critic=True)
+    with track_pipeline(tracker, orchestrator):  # the graph is built (and run) inside the block
+        yield orchestrator.build_orchestrator(enable_critic=True)
     mp.undo()
 
 
@@ -221,6 +217,14 @@ def test_cost_summary_can_be_saved_and_reloaded(normal_run, tracker, tmp_path):
     assert TIMED_NODES <= set(run["by_agent"])
 
 
+def test_dashboard_can_chart_the_real_runs_node_timings(normal_run, debug_run, tracker):
+    pytest.importorskip("plotly")
+    from dashboard.components.cost_analytics import node_latency_figure
+
+    fig = node_latency_figure(tracker.to_dict())
+    assert TIMED_NODES <= set(fig.data[0].x)
+
+
 def test_dashboard_charts_can_be_built_from_a_tracked_run(normal_run):
     pytest.importorskip("plotly")
     from dashboard.components.cost_analytics import cumulative_cost_figure, token_distribution_figure
@@ -235,31 +239,105 @@ def test_dashboard_charts_can_be_built_from_a_tracked_run(normal_run):
 
 
 # ---------------------------------------------------------------------------
-# Stages owned by other members: skipped until their files exist in this branch
+# Master entrypoint (main.py, Team Lead): skipped until the file exists in the branch
 # ---------------------------------------------------------------------------
-def test_paper_generation_stage(tmp_path):
-    pytest.importorskip("src.agents.synthesizer_agent",
-                        reason="Member 2's synthesizer_agent.py is not in this branch yet")
-    from src.agents.synthesizer_agent import generate_latex_paper
-
-    sample_state = {
-        "research_topic": "AI agent time horizons",
-        "selected_hypothesis": "Pruning saves inference memory",
-        "execution_result": "Baseline: 100\nMethod: 110\nMetric delta: +10",
-        "critic_verdict": "ACCEPTED",
-        "statistical_metrics": {"p_value": 0.005, "effect_size_cohens_d": 1.1},
-    }
-    res = generate_latex_paper(sample_state, output_dir=str(tmp_path))
-    assert res["status"] == "SUCCESS"
-    assert Path(res["tex_path"]).exists()
-    assert Path(res["pdf_path"]).exists()
-    assert Path(res["bib_path"]).exists()
-
-
-def test_master_entrypoint_shows_help():
-    entrypoint = ROOT / "main.py"
-    if not entrypoint.exists():
+@pytest.fixture(scope="module")
+def main_module():
+    if not (ROOT / "main.py").exists():
         pytest.skip("main.py (Team Lead) is not in this branch yet")
-    result = subprocess.run([sys.executable, str(entrypoint), "--help"], capture_output=True, text=True,
+    import importlib
+
+    return importlib.import_module("main")
+
+
+def test_master_entrypoint_shows_help(main_module):
+    result = subprocess.run([sys.executable, str(ROOT / "main.py"), "--help"], capture_output=True, text=True,
                             timeout=120, cwd=ROOT)
     assert result.returncode == 0 and "--topic" in result.stdout
+
+
+def test_run_pipeline_from_main_returns_the_full_state(main_module, graph):
+    result = main_module.run_pipeline(TOPIC, sandbox_mode="local", synthesize_latex=False,
+                                      enable_critic=True, quiet=True)
+    assert result["execution_status"] == "SUCCESS"
+    assert result["critic_verdict"] in VERDICTS
+    assert result["selected_hypothesis"].strip() and result["elapsed_seconds"] > 0
+
+
+# ---------------------------------------------------------------------------
+# Paper generation (synthesize_latex_paper in main.py)
+# ---------------------------------------------------------------------------
+def write_paper(main_module, state, folder):
+    info = main_module.synthesize_latex_paper(state, folder)
+    return info, Path(info["tex_path"]).read_text(encoding="utf-8")
+
+
+def make_state(**overrides):
+    state = {"research_topic": "Sparse Transformers", "selected_hypothesis": "Pruning reduces memory.",
+             "execution_result": "Baseline mean: 100\nMethod mean: 102"}
+    state.update(overrides)
+    return state
+
+
+def test_paper_stage_writes_a_complete_tex_file(main_module, normal_run, tmp_path):
+    info, tex = write_paper(main_module, normal_run, tmp_path)
+    assert info["status"] == "SUCCESS"
+    assert normal_run["research_topic"] in tex
+    assert "\\begin{document}" in tex and "\\end{document}" in tex
+
+
+def test_paper_reports_the_runs_verdict_and_p_value(main_module, normal_run, tmp_path):
+    _, tex = write_paper(main_module, normal_run, tmp_path)
+    assert normal_run["critic_verdict"] in tex
+    assert str(normal_run["statistical_metrics"]["p_value"]) in tex
+
+
+def test_paper_stage_does_not_write_into_the_repository(main_module, normal_run, tmp_path):
+    info, _ = write_paper(main_module, normal_run, tmp_path)
+    assert Path(info["tex_path"]).parent == tmp_path
+
+
+# Known problems in the paper stage, found in QA. Non-strict xfail: the file stays green now and
+# reports XPASS once each one is fixed. Each reason says what a fix must do.
+@pytest.mark.xfail(strict=False, reason="BUG: the abstract says the hypothesis was 'confirmed' even when the "
+                                        "critic verdict is REJECTED. Wording must follow the verdict.")
+def test_paper_does_not_claim_confirmation_when_the_critic_rejected_it(main_module, tmp_path):
+    state = make_state(critic_verdict="REJECTED", statistical_metrics={"p_value": 0.14, "effect_size_cohens_d": 0.3})
+    _, tex = write_paper(main_module, state, tmp_path)
+    assert "confirmed our central hypothesis" not in tex
+    assert "publication-ready empirical finding" not in tex
+
+
+@pytest.mark.xfail(strict=False, reason="BUG: with no critic result and no statistics the paper invents "
+                                        "p < 0.001, Cohen's d 0.85 and verdict ACCEPTED. Missing values must say 'not available'.")
+def test_paper_does_not_invent_statistics_or_a_verdict(main_module, tmp_path):
+    _, tex = write_paper(main_module, make_state(), tmp_path)
+    assert "< 0.001" not in tex and "0.85" not in tex
+    assert "ACCEPTED" not in tex
+
+
+@pytest.mark.xfail(strict=False, reason="BUG: the .pdf written when no LaTeX compiler exists is a text stub "
+                                        "('%PDF-1.4 simulated publication draft') that no PDF viewer can open.")
+def test_the_pdf_output_is_a_real_pdf(main_module, normal_run, tmp_path):
+    fitz = pytest.importorskip("pymupdf", reason="PyMuPDF is needed to check the PDF")
+    info, _ = write_paper(main_module, normal_run, tmp_path)
+    document = fitz.open(info["pdf_path"])
+    assert document.page_count >= 1
+
+
+@pytest.mark.xfail(strict=False, reason="BUG: LaTeX special characters (% & _ #) in the hypothesis are inserted "
+                                        "unescaped, so a % comments out the rest of the line when compiled.")
+def test_paper_escapes_latex_special_characters(main_module, tmp_path):
+    state = make_state(selected_hypothesis="Pruning cuts memory by 30% & latency for x_1 # tokens.")
+    _, tex = write_paper(main_module, state, tmp_path)
+    assert "30% &" not in tex  # must appear as 30\% \& (or be removed), never raw
+
+
+# ---------------------------------------------------------------------------
+# Stage owned by another member: skipped until the file exists in this branch
+# ---------------------------------------------------------------------------
+def test_member2_synthesizer_agent_when_it_exists():
+    pytest.importorskip("src.agents.synthesizer_agent",
+                        reason="Member 2's synthesizer_agent.py is not in this branch yet")
+    pytest.skip("synthesizer_agent.py exists now: extend this test with its real functions "
+                "(verified numbers + citations -> .tex -> PDF)")
