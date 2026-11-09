@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import streamlit as st
@@ -33,4 +34,15 @@ def render_paper_viewer() -> None:
         mime="application/pdf",
     )
 
-    st.pdf(pdf_bytes, height=700, alt=f"Preview of {file_name}")
+    # Embed PDF using base64 iframe — works without any extra Streamlit components
+    b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+    pdf_display = f"""
+        <iframe
+            src="data:application/pdf;base64,{b64_pdf}"
+            width="100%"
+            height="750px"
+            style="border: none; border-radius: 8px;"
+            title="Preview of {file_name}"
+        ></iframe>
+    """
+    st.markdown(pdf_display, unsafe_allow_html=True)
