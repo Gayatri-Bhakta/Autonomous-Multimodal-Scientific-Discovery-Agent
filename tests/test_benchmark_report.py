@@ -81,3 +81,22 @@ def test_generate_writes_report_and_charts(tmp_path):
     assert "sample paper" in text
     assert paths["report"] == report.as_posix()
     json.dumps(paths)
+
+
+def test_findings_name_leads_and_gaps():
+    from src.evaluation.benchmark_report import findings
+
+    text = "\n".join(findings(RESULT))
+    assert "biggest lead is **Empirical Validity**" in text
+    assert "biggest gap is **Novelty**" in text
+    assert "AI papers scored highest" in text
+    no_agent = "\n".join(findings({**RESULT, "agent": None}))
+    assert "biggest" not in no_agent and "weakest dimension" in no_agent
+
+
+def test_report_has_findings_and_limitations(tmp_path):
+    report = tmp_path / "docs" / "report.md"
+    generate(RESULT, report, tmp_path / "docs" / "figures")
+    text = report.read_text()
+    for heading in ("## Key findings", "## Limitations", "## Next steps", "## Reproduce"):
+        assert heading in text
