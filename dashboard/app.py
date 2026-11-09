@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from components.agent_trace import AGENTS, render_agent_trace
 from components.paper_viewer import render_paper_viewer
 
