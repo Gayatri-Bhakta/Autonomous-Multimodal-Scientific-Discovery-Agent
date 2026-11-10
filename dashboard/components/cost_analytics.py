@@ -42,11 +42,26 @@ def run_label(run: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Chart 1: cumulative cost per run
 # ---------------------------------------------------------------------------
+COLORS = ["#818cf8", "#10b981", "#f59e0b", "#ec4899", "#06b6d4"]
+
+_DARK_LAYOUT = dict(
+    paper_bgcolor="#0d1117",
+    plot_bgcolor="#0d1117",
+    font=dict(family="Inter, sans-serif", color="#94a3b8"),
+    title_font=dict(family="Inter, sans-serif", color="#c7d2fe", size=15),
+    xaxis=dict(gridcolor="rgba(99,102,241,0.1)", linecolor="rgba(99,102,241,0.2)", tickfont=dict(color="#64748b")),
+    yaxis=dict(gridcolor="rgba(99,102,241,0.1)", linecolor="rgba(99,102,241,0.2)", tickfont=dict(color="#64748b")),
+    legend=dict(bgcolor="rgba(17,24,39,0.8)", bordercolor="rgba(99,102,241,0.3)", borderwidth=1),
+    margin=dict(t=50, l=60, r=30, b=50),
+)
+
+
 def cumulative_cost_figure(runs: List[Dict[str, Any]]):
     """One line per run: the running total cost after each LLM call (call 0 = $0)."""
     go = _go()
     fig = go.Figure()
-    for run in runs:
+    for i, run in enumerate(runs):
+        color = COLORS[i % len(COLORS)]
         records = run.get("records", [])
         running, xs, ys, notes = 0.0, [0], [0.0], ["start"]
         for number, rec in enumerate(records, start=1):
@@ -55,12 +70,22 @@ def cumulative_cost_figure(runs: List[Dict[str, Any]]):
             xs.append(number)
             ys.append(running)
             notes.append(f"{rec.get('agent', '?')} ({rec.get('model', '?')})" + ("" if cost is not None else ", price unknown"))
-        fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", name=run_label(run), text=notes,
-                                 hovertemplate="call %{x}: %{text}<br>cumulative $%{y:.4f}<extra></extra>"))
-    fig.update_layout(title="Cumulative cost per discovery run", xaxis_title="LLM call number",
-                      yaxis_title="Cumulative cost (USD)", yaxis_tickformat="$.4f", legend_title="Run")
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode="lines+markers", name=run_label(run), text=notes,
+            line=dict(color=color, width=2.5),
+            marker=dict(color=color, size=7, line=dict(color="#0d1117", width=1.5)),
+            hovertemplate="call %{x}: %{text}<br>cumulative $%{y:.4f}<extra></extra>",
+        ))
+    layout = dict(**_DARK_LAYOUT)
+    layout["title"] = "Cumulative Cost per Discovery Run"
+    layout["xaxis"]["title"] = "LLM Call Number"
+    layout["yaxis"]["title"] = "Cumulative Cost (USD)"
+    layout["yaxis"]["tickformat"] = "$.4f"
+    layout["legend_title"] = "Run"
+    fig.update_layout(**layout)
     if not runs:
-        fig.add_annotation(text="No runs recorded yet", showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5)
+        fig.add_annotation(text="No runs recorded yet", showarrow=False, xref="paper", yref="paper",
+                           x=0.5, y=0.5, font=dict(color="#475569", size=14))
     return fig
 
 
@@ -73,14 +98,22 @@ def token_distribution_figure(run: Optional[Dict[str, Any]]):
     agents = {name: a for name, a in (run or {}).get("by_agent", {}).items() if a.get("total_tokens", 0) > 0}
     names = sorted(agents, key=lambda n: agents[n]["total_tokens"], reverse=True)
     fig = go.Figure()
-    fig.add_bar(name="Prompt tokens", x=names, y=[agents[n]["prompt_tokens"] for n in names])
-    fig.add_bar(name="Completion tokens", x=names, y=[agents[n]["completion_tokens"] for n in names])
-    title = "Token distribution by agent"
+    fig.add_bar(name="Prompt tokens", x=names, y=[agents[n]["prompt_tokens"] for n in names],
+                marker_color="#818cf8", marker_line=dict(color="#0d1117", width=1))
+    fig.add_bar(name="Completion tokens", x=names, y=[agents[n]["completion_tokens"] for n in names],
+                marker_color="#10b981", marker_line=dict(color="#0d1117", width=1))
+    title = "Token Distribution by Agent"
     if run and run.get("estimated_calls"):
         title += " (includes estimated counts)"
-    fig.update_layout(barmode="stack", title=title, xaxis_title="Agent", yaxis_title="Tokens")
+    layout = dict(**_DARK_LAYOUT)
+    layout["barmode"] = "stack"
+    layout["title"] = title
+    layout["xaxis"]["title"] = "Agent"
+    layout["yaxis"]["title"] = "Tokens"
+    fig.update_layout(**layout)
     if not names:
-        fig.add_annotation(text="No token usage recorded", showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5)
+        fig.add_annotation(text="No token usage recorded", showarrow=False, xref="paper", yref="paper",
+                           x=0.5, y=0.5, font=dict(color="#475569", size=14))
     return fig
 
 
@@ -93,10 +126,20 @@ def node_latency_figure(run: Optional[Dict[str, Any]]):
     nodes = {name: a["node_latency_s"] for name, a in (run or {}).get("by_agent", {}).items()
              if a.get("node_latency_s", 0) > 0}
     names = sorted(nodes, key=lambda n: nodes[n], reverse=True)
-    fig = go.Figure(go.Bar(x=names, y=[round(nodes[n], 4) for n in names], name="Node time"))
-    fig.update_layout(title="Time per agent node", xaxis_title="Agent node", yaxis_title="Seconds")
+    # gradient colors by rank
+    bar_colors = [COLORS[i % len(COLORS)] for i in range(len(names))]
+    fig = go.Figure(go.Bar(
+        x=names, y=[round(nodes[n], 4) for n in names], name="Node time",
+        marker=dict(color=bar_colors, line=dict(color="#0d1117", width=1)),
+    ))
+    layout = dict(**_DARK_LAYOUT)
+    layout["title"] = "Time per Agent Node"
+    layout["xaxis"]["title"] = "Agent Node"
+    layout["yaxis"]["title"] = "Seconds"
+    fig.update_layout(**layout)
     if not names:
-        fig.add_annotation(text="No node timings recorded", showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5)
+        fig.add_annotation(text="No node timings recorded", showarrow=False, xref="paper", yref="paper",
+                           x=0.5, y=0.5, font=dict(color="#475569", size=14))
     return fig
 
 
