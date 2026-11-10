@@ -1,6 +1,6 @@
 # Cost and Latency Tracking
 
-Prepared by: Sachin R Nair (Member 5)
+Prepared by: Sachin R Nair 
 Code: `src/utils/cost_tracker.py`, `dashboard/components/cost_analytics.py`
 Tests: `tests/test_cost_tracker.py`, `tests/test_cost_analytics.py`, `tests/test_end_to_end.py`
 
