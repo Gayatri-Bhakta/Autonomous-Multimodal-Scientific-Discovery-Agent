@@ -5,11 +5,13 @@ Member 5 Deliverable
 Turns a hypothesis into a Python experiment script, runs it, and returns
 (code, output). The orchestrator calls generate_and_run_code().
 
-Week 1 skeleton: the script is built from a baseline template (no LLM call yet).
+Until the LLM is connected, the script is a real offline proxy experiment
+(decision tree vs random forest, repeated cross-validated macro-F1).
 The prompt template is ready for the LLM to be plugged in later, and the
 subprocess runner will be replaced by a Docker sandbox in a later week.
 """
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -36,31 +38,65 @@ Rules:
 """
 
 # ---------------------------------------------------------------------------
-# Baseline experiment script (used until the LLM is connected)
-# __HYPOTHESIS__ is replaced with the hypothesis text.
+# Offline proxy experiment (used until the LLM is connected)
+#
+# The fallback hypotheses (hypothesis_agent.py) claim that "a model variant ...
+# achieves a higher mean cross-validated macro-F1 than an otherwise identical
+# baseline on a controlled proxy task" and suggest scikit-learn proxy datasets.
+# This script runs that comparison for real: a single decision tree (baseline)
+# against a random-forest variant, scored with repeated stratified k-fold
+# cross-validation on the same folds. All numbers are measured, never invented,
+# so the statistics validator and the critic judge a real result.
+#
+# __HYPOTHESIS__, __DATASET__ and __SEED__ are filled in by generate_code().
 # ---------------------------------------------------------------------------
-BASELINE_SCRIPT = '''import random
+PROXY_DATASETS = ("breast_cancer", "wine", "noisy_synthetic")
+
+BASELINE_SCRIPT = '''import json
 import statistics
+import warnings
 
-random.seed(42)
+warnings.filterwarnings("ignore")
+
+from sklearn.datasets import load_breast_cancer, load_wine, make_classification
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
+
 HYPOTHESIS = __HYPOTHESIS__
-
-N_TRIALS = 30
-
-
-def run_trial(use_method):
-    """Simulated metric: the proposed method shifts the mean slightly."""
-    score = random.gauss(100, 5)
-    return score + 2 if use_method else score
+DATASET = __DATASET__
+SEED = __SEED__
+N_SPLITS, N_REPEATS = 5, 8          # 40 cross-validated scores per model
 
 
-baseline = [run_trial(False) for _ in range(N_TRIALS)]
-method = [run_trial(True) for _ in range(N_TRIALS)]
+def load_proxy_task(name):
+    if name == "breast_cancer":
+        return load_breast_cancer(return_X_y=True)
+    if name == "wine":
+        return load_wine(return_X_y=True)
+    return make_classification(n_samples=600, n_features=20, n_informative=6,
+                               flip_y=0.08, random_state=SEED)
 
-print(HYPOTHESIS)
-print("Baseline mean:", round(statistics.mean(baseline), 3))
-print("Method mean:", round(statistics.mean(method), 3))
-print("Metric delta:", round(statistics.mean(method) - statistics.mean(baseline), 3))
+
+X, y = load_proxy_task(DATASET)
+folds = RepeatedStratifiedKFold(n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=SEED)
+
+baseline_scores, variant_scores = [], []
+for train, test in folds.split(X, y):
+    baseline_model = DecisionTreeClassifier(random_state=SEED)
+    variant_model = RandomForestClassifier(n_estimators=50, random_state=SEED)
+    for model, scores in ((baseline_model, baseline_scores), (variant_model, variant_scores)):
+        model.fit(X[train], y[train])
+        scores.append(f1_score(y[test], model.predict(X[test]), average="macro"))
+
+print("Controlled proxy task:", DATASET, "| seed", SEED)
+print("Baseline model: decision tree | Model variant: random forest (identical folds)")
+print("Repeated stratified cross-validated macro-F1, n =", len(baseline_scores), "per model")
+print("Baseline mean:", round(statistics.mean(baseline_scores), 4))
+print("Method mean:", round(statistics.mean(variant_scores), 4))
+print("Metric delta:", round(statistics.mean(variant_scores) - statistics.mean(baseline_scores), 4))
+print("RESULTS_JSON: " + json.dumps({"baseline": baseline_scores, "treatment": variant_scores}))
 '''
 
 
@@ -69,12 +105,22 @@ def build_prompt(hypothesis: str) -> str:
     return CODE_EXECUTOR_PROMPT.format(hypothesis=hypothesis.strip())
 
 
+def _proxy_settings(hypothesis: str) -> Tuple[str, int]:
+    """Pick a proxy dataset and seed from the hypothesis text (stable per topic)."""
+    digest = int(hashlib.sha256(hypothesis.strip().encode("utf-8")).hexdigest(), 16)
+    return PROXY_DATASETS[digest % len(PROXY_DATASETS)], digest % 10_000
+
+
 def generate_code(hypothesis: str) -> str:
     """Create a Python experiment script for the hypothesis.
 
     Later: send build_prompt(hypothesis) to the LLM and return its code.
     """
-    return BASELINE_SCRIPT.replace("__HYPOTHESIS__", repr(hypothesis.strip()))
+    dataset, seed = _proxy_settings(hypothesis)
+    return (BASELINE_SCRIPT
+            .replace("__HYPOTHESIS__", repr(hypothesis.strip()))
+            .replace("__DATASET__", repr(dataset))
+            .replace("__SEED__", str(seed)))
 
 
 def run_code_detailed(code: str, timeout: int = 30) -> Dict[str, Any]:
