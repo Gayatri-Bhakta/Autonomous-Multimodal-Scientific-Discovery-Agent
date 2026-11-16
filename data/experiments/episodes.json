@@ -238,5 +238,371 @@
     ],
     "retry_count": 0,
     "iteration": 1
+  },
+  {
+    "episode_id": "ep_490a2615",
+    "timestamp": "2026-11-05T15:28:41.199393+00:00",
+    "topic": "Sparse Transformers",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Sparse Transformers\nPapers retrieved: 5\n\n1. HELIX: HEterogeneous LLM Inference with FleXible and Fine-Grained Partitioning\n   Abstract excerpt: LLM inference is inherently heterogen",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_87c3c641",
+    "timestamp": "2026-11-05T15:28:41.507983+00:00",
+    "topic": "Sparse Transformers",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Sparse Transformers\nPapers retrieved: 5\n\n1. HELIX: HEterogeneous LLM Inference with FleXible and Fine-Grained Partitioning\n   Abstract excerpt: LLM inference is inherently heterogen",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_1c323a36",
+    "timestamp": "2026-11-09T12:49:23.818776+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: Dynamic token pruning reduces inference memory by 30% with <1% perplexity loss.",
+    "verdict": "ACCEPTED",
+    "metric_delta": null,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured inference memory and perplexity for token pruning vs the full model.",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: Dynamic token pruning reduces inference memory b...' succeeded with delta None."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_8c1974df",
+    "timestamp": "2026-11-09T12:49:23.835244+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: Dynamic token pruning reduces inference memory by 30% with <1% perplexity loss.",
+    "verdict": "NEEDS_REPLICATION",
+    "metric_delta": null,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured inference memory and perplexity for token pruning vs the full model.",
+    "lessons_learned": [],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_c6085cf0",
+    "timestamp": "2026-11-09T12:50:09.229942+00:00",
+    "topic": "Dynamic Pruning",
+    "hypothesis": "Hypothesis: pruning saves 30% memory",
+    "verdict": "ACCEPTED",
+    "metric_delta": 4.0,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Measured memory with and without pruning: memory dropped 31%. Baseline mean: 98. Method mean: 102. Metric delta: +4.0",
+    "lessons_learned": [
+      "Hypothesis validated: 'Hypothesis: pruning saves 30% memory...' succeeded with delta 4.0."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_13f0f18a",
+    "timestamp": "2026-11-09T12:50:10.115959+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Quantum-Inspired Optimization\nPapers retrieved: 5\n\n1. GPU Parallel Pareto Local Search for Multi-objective QUBO\n   Abstract excerpt: We revisit Pareto Local Search (PLS) for multi-o",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_9088058b",
+    "timestamp": "2026-11-09T12:50:10.212756+00:00",
+    "topic": "Quantum-Inspired Optimization",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Quantum-Inspired Optimization\nPapers retrieved: 5\n\n1. GPU Parallel Pareto Local Search for Multi-objective QUBO\n   Abstract excerpt: We revisit Pareto Local Search (PLS) for multi-o",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_0ef7d765",
+    "timestamp": "2026-11-09T13:02:34.127689+00:00",
+    "topic": "Autonomous Agent Reasoning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Autonomous Agent Reasoning\nPapers retrieved: 5\n\n1. Agentic Federated Learning: Rule-Based Client and Server Agents for Adaptive Training\n   Abstract excerpt: Federated Learning (FL)",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_bffbbb22",
+    "timestamp": "2026-11-09T13:02:34.363957+00:00",
+    "topic": "Autonomous Agent Reasoning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Autonomous Agent Reasoning\nPapers retrieved: 5\n\n1. Agentic Federated Learning: Rule-Based Client and Server Agents for Adaptive Training\n   Abstract excerpt: Federated Learning (FL)",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_093883b6",
+    "timestamp": "2026-11-09T13:03:50.708299+00:00",
+    "topic": "Neural network pruning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Neural network pruning'\nAnalyzed 2 papers (local benchmark fallback):\n\n1. Discovery of dietary polyphenols targeting the autoinducer-2 quorum sensing system of p",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 5% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_71139eff",
+    "timestamp": "2026-11-09T13:03:50.808066+00:00",
+    "topic": "Neural network pruning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review for Research Topic: 'Neural network pruning'\nAnalyzed 2 papers (local benchmark fallback):\n\n1. Discovery of dietary polyphenols targeting the autoinducer-2 quorum sensing system of p",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 5% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_6ce3c154",
+    "timestamp": "2026-11-09T13:17:15.725859+00:00",
+    "topic": "AI/ML",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI/ML\nPapers retrieved: 5\n\n1. Regression with Many Generated Controls\n   Abstract excerpt: We consider linear regression when some covariates are endogenous, a variable sufficient t",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_9e69e265",
+    "timestamp": "2026-11-09T13:17:15.832606+00:00",
+    "topic": "AI/ML",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI/ML\nPapers retrieved: 5\n\n1. Regression with Many Generated Controls\n   Abstract excerpt: We consider linear regression when some covariates are endogenous, a variable sufficient t",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_f99ff9b6",
+    "timestamp": "2026-11-09T13:19:55.134749+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_cd0123ed",
+    "timestamp": "2026-11-09T13:19:55.249744+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_4f9cef85",
+    "timestamp": "2026-11-09T13:26:20.783676+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_c519324a",
+    "timestamp": "2026-11-09T13:26:20.938372+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_bfd19371",
+    "timestamp": "2026-11-09T13:41:38.601907+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_722bf48d",
+    "timestamp": "2026-11-09T13:41:38.696537+00:00",
+    "topic": "AI",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI\nPapers retrieved: 5\n\n1. On Agentic Manipulation Policies\n   Abstract excerpt: Recent work on robot manipulation has focused on specialist policies trained on demonstrations. We s",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_e13f2b7c",
+    "timestamp": "2026-11-09T13:56:51.004151+00:00",
+    "topic": "Neural network pruning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Neural network pruning\nPapers retrieved: 5\n\n1. SHarP: Saliency-based Pruning of Agent Harnesses\n   Abstract excerpt: Agent harnesses are systems that coordinate model calls, tool us",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_2b28337c",
+    "timestamp": "2026-11-09T13:56:51.127783+00:00",
+    "topic": "Neural network pruning",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: Neural network pruning\nPapers retrieved: 5\n\n1. SHarP: Saliency-based Pruning of Agent Harnesses\n   Abstract excerpt: Agent harnesses are systems that coordinate model calls, tool us",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
+  },
+  {
+    "episode_id": "ep_aed74815",
+    "timestamp": "2026-11-10T04:12:21.683502+00:00",
+    "topic": "AI ML",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI ML\nPapers retrieved: 5\n\n1. Network Contention State Aware Dynamic Optimizer for Accelerator Collective Communication Libraries\n   Abstract excerpt: Collective Communication Libra",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 1
+  },
+  {
+    "episode_id": "ep_45d37a0e",
+    "timestamp": "2026-11-10T04:12:21.851917+00:00",
+    "topic": "AI ML",
+    "hypothesis": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Review: AI ML\nPapers retrieved: 5\n\n1. Network Contention State Aware Dynamic Optimizer for Accelerator Collective Communication Libraries\n   Abstract excerpt: Collective Communication Libra",
+    "verdict": "REJECTED",
+    "metric_delta": 1.905,
+    "p_value": null,
+    "execution_status": "SUCCESS",
+    "summary": "Hypothesis: A model variant designed to address the issue below achieves a higher mean cross-validated macro-F1 than an otherwise identical baseline on a controlled proxy task. Issue: Literature Revie",
+    "lessons_learned": [
+      "Hypothesis rejected (- Hypothesis not tested: the experiment mentions only 6% of the hypothesis' key ...). Avoid repeating this exact formulation."
+    ],
+    "retry_count": 0,
+    "iteration": 2
   }
 ]

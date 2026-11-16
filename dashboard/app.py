@@ -1,702 +1,592 @@
+"""AutoScientist AI — Discovery Dashboard"""
 from pathlib import Path
 import streamlit as st
 from components.agent_trace import AGENTS, render_agent_trace
 from components.paper_viewer import render_paper_viewer
 
-# ─── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="AutoScientist AI — Discovery Dashboard",
+    page_title="AutoScientist AI",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ─── Global CSS ─────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# GLOBAL STYLES
+# ════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Base reset ── */
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-    background-color: #0a0e1a;
-    color: #e2e8f0;
-}
-.main { background: #0a0e1a; }
+/* ─── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, [class*="css"], .main { font-family:'Inter',sans-serif; background:#060912; color:#cbd5e1; }
+#MainMenu, footer, header { visibility:hidden; }
+.block-container { padding:0 !important; max-width:100% !important; }
+section[data-testid="stMain"] > div { padding:0; }
 
-/* ── Hide default streamlit chrome ── */
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding: 1.5rem 2rem 2rem; }
-
-/* ── Sidebar ── */
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0d1224 0%, #111827 100%);
-    border-right: 1px solid rgba(99,102,241,0.2);
+    background:#07091a;
+    border-right:1px solid rgba(139,92,246,.12);
+    width:72px !important;
+    min-width:72px !important;
 }
-[data-testid="stSidebar"] .stRadio label {
-    color: #94a3b8 !important;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: all 0.2s;
+[data-testid="stSidebar"] > div:first-child { width:72px; padding:0; }
+[data-testid="stSidebarContent"] { padding:0; }
+.stRadio > div { flex-direction:column; gap:0; }
+.stRadio label { display:none !important; }
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(139,92,246,.3); border-radius:3px; }
+
+/* ─── Main layout ───────────────────────────────────────────────────────── */
+.app-shell {
+    display:flex;
+    min-height:100vh;
+    background:#060912;
 }
-[data-testid="stSidebar"] .stRadio label:hover {
-    color: #c7d2fe !important;
-    background: rgba(99,102,241,0.1);
+.nav-rail {
+    width:72px;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 0;
+    gap:4px;
+    background:#07091a;
+    border-right:1px solid rgba(139,92,246,.12);
+    position:fixed;
+    top:0;bottom:0;left:0;
+    z-index:100;
+}
+.nav-logo {
+    width:40px;height:40px;
+    border-radius:12px;
+    background:linear-gradient(135deg,#7c3aed,#06b6d4);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.2rem;
+    margin-bottom:16px;
+    box-shadow:0 0 20px rgba(124,58,237,.4);
+}
+.nav-divider { width:36px;height:1px;background:rgba(139,92,246,.15);margin:8px 0; }
+.nav-btn {
+    width:48px;height:48px;
+    border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.25rem;
+    cursor:pointer;
+    transition:all .2s cubic-bezier(.4,0,.2,1);
+    color:#475569;
+    position:relative;
+}
+.nav-btn:hover { background:rgba(139,92,246,.12); color:#a78bfa; }
+.nav-btn.active {
+    background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(6,182,212,.15));
+    color:#a78bfa;
+    box-shadow:0 0 16px rgba(124,58,237,.2);
+}
+.nav-btn.active::before {
+    content:'';
+    position:absolute;right:-1px;
+    top:50%;transform:translateY(-50%);
+    width:3px;height:28px;
+    background:linear-gradient(180deg,#7c3aed,#06b6d4);
+    border-radius:3px 0 0 3px;
+}
+.nav-tooltip {
+    position:absolute;left:60px;
+    background:#1e1b4b;
+    color:#c4b5fd;
+    font-size:.7rem;font-weight:600;
+    padding:5px 10px;
+    border-radius:7px;
+    white-space:nowrap;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    border:1px solid rgba(139,92,246,.2);
+}
+.nav-btn:hover .nav-tooltip { opacity:1; }
+
+/* ─── Page canvas ───────────────────────────────────────────────────────── */
+.page-canvas {
+    margin-left:72px;
+    padding:28px 32px 48px;
+    min-height:100vh;
+    max-width:1400px;
 }
 
-/* ── Hero banner ── */
-.hero-banner {
-    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 40%, #0a0e1a 100%);
-    border: 1px solid rgba(99,102,241,0.3);
-    border-radius: 20px;
-    padding: 2.5rem 3rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
+/* ─── Page header ───────────────────────────────────────────────────────── */
+.pg-header {
+    display:flex;
+    align-items:flex-end;
+    gap:16px;
+    margin-bottom:28px;
+    padding-bottom:20px;
+    border-bottom:1px solid rgba(139,92,246,.1);
 }
-.hero-banner::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
-    pointer-events: none;
+.pg-icon {
+    width:52px;height:52px;
+    border-radius:16px;
+    background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(6,182,212,.1));
+    border:1px solid rgba(139,92,246,.25);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.5rem;
+    flex-shrink:0;
 }
-.hero-banner::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: 10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%);
-    pointer-events: none;
-}
-.hero-title {
-    font-size: 2.4rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #818cf8 0%, #c7d2fe 50%, #10b981 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin: 0 0 0.5rem 0;
-    line-height: 1.2;
-}
-.hero-subtitle {
-    color: #64748b;
-    font-size: 1rem;
-    font-weight: 400;
-    margin: 0;
-}
-.hero-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(16,185,129,0.2));
-    border: 1px solid rgba(99,102,241,0.4);
-    color: #a5b4fc;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-    display: inline-block;
-}
+.pg-title { font-size:1.6rem;font-weight:800;color:#f1f5f9;line-height:1; }
+.pg-sub { font-size:.8rem;color:#475569;margin-top:4px; }
 
-/* ── Metric cards ── */
-.metric-card {
-    background: linear-gradient(135deg, #111827, #1a2234);
-    border: 1px solid rgba(99,102,241,0.2);
-    border-radius: 16px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: all 0.3s ease;
+/* ─── Stat cards ─────────────────────────────────────────────────────────── */
+.stat-row { display:grid;gap:16px;margin-bottom:24px; }
+.stat-card {
+    background:#0d1021;
+    border:1px solid rgba(139,92,246,.12);
+    border-radius:16px;
+    padding:20px 22px;
+    transition:all .25s;
+    position:relative;
+    overflow:hidden;
 }
-.metric-card:hover {
-    border-color: rgba(99,102,241,0.5);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(99,102,241,0.15);
+.stat-card::after {
+    content:'';
+    position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(124,58,237,.04),transparent 60%);
+    pointer-events:none;
 }
-.metric-value {
-    font-size: 2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #818cf8, #10b981);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.metric-label {
-    color: #64748b;
-    font-size: 0.8rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.25rem;
-}
+.stat-card:hover { border-color:rgba(139,92,246,.3); transform:translateY(-2px); box-shadow:0 8px 32px rgba(124,58,237,.12); }
+.stat-label { font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#374151;margin-bottom:8px; }
+.stat-val { font-size:2rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1; }
+.stat-delta { font-size:.75rem;color:#10b981;margin-top:6px; }
 
-/* ── Section header ── */
-.section-header {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #e2e8f0;
-    margin-bottom: 0.25rem;
+/* ─── Glass card ─────────────────────────────────────────────────────────── */
+.gcard {
+    background:rgba(13,16,33,.85);
+    backdrop-filter:blur(20px);
+    border:1px solid rgba(139,92,246,.1);
+    border-radius:18px;
+    padding:22px 26px;
+    margin-bottom:16px;
 }
-.section-sub {
-    color: #475569;
-    font-size: 0.875rem;
-    margin-bottom: 1.5rem;
-}
+.gcard-title { font-size:.95rem;font-weight:700;color:#e2e8f0;margin-bottom:12px; }
 
-/* ── Agent pipeline ── */
-.pipeline-container {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    overflow-x: auto;
-    padding: 1rem 0;
+/* ─── Pipeline steps ────────────────────────────────────────────────────── */
+.pipe-step {
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:16px 20px;
+    background:#0d1021;
+    border:1px solid rgba(139,92,246,.1);
+    border-radius:14px;
+    margin-bottom:8px;
+    transition:all .3s;
+    position:relative;overflow:hidden;
 }
-.agent-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 120px;
+.pipe-step.active {
+    border-color:rgba(124,58,237,.5);
+    background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(13,16,33,1));
+    box-shadow:0 0 32px rgba(124,58,237,.15);
 }
-.agent-circle {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: #1a2234;
-    border: 2px solid rgba(99,102,241,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    transition: all 0.3s;
+.pipe-step.active::before {
+    content:'';position:absolute;left:0;top:0;bottom:0;
+    width:3px;
+    background:linear-gradient(180deg,#7c3aed,#06b6d4);
 }
-.agent-circle.active {
-    background: linear-gradient(135deg, #4f46e5, #10b981);
-    border-color: #818cf8;
-    box-shadow: 0 0 24px rgba(99,102,241,0.5);
-    animation: pulse 2s infinite;
+.pipe-step.done { border-color:rgba(16,185,129,.2); }
+.pipe-icon { font-size:1.6rem;width:40px;text-align:center;flex-shrink:0; }
+.pipe-name { font-weight:700;font-size:.95rem;color:#e2e8f0; }
+.pipe-name.a { color:#a78bfa; }
+.pipe-desc { font-size:.78rem;color:#374151;margin-top:2px; }
+.live-dot {
+    width:8px;height:8px;border-radius:50%;
+    background:#a78bfa;
+    box-shadow:0 0 8px #7c3aed;
+    animation:blink 1.2s infinite;
+    margin-left:auto;flex-shrink:0;
 }
-.agent-circle.done {
-    background: rgba(16,185,129,0.15);
-    border-color: #10b981;
-}
-.agent-name {
-    font-size: 0.7rem;
-    color: #64748b;
-    font-weight: 500;
-    text-align: center;
-}
-.agent-name.active { color: #a5b4fc; font-weight: 700; }
-.pipeline-arrow {
-    color: rgba(99,102,241,0.4);
-    font-size: 1.5rem;
-    padding: 0 4px;
-    flex-shrink: 0;
-}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* ── Glassmorphism card ── */
-.glass-card {
-    background: rgba(17, 24, 39, 0.8);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(99,102,241,0.15);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+/* ─── Pill badge ─────────────────────────────────────────────────────────── */
+.pill {
+    display:inline-flex;align-items:center;gap:5px;
+    padding:3px 11px;border-radius:20px;
+    font-size:.7rem;font-weight:700;letter-spacing:.04em;
 }
+.pill-v { background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.25); }
+.pill-w { background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25); }
+.pill-i { background:rgba(139,92,246,.12);color:#a78bfa;border:1px solid rgba(139,92,246,.25); }
+.pill-e { background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25); }
 
-/* ── Status badge ── */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
+/* ─── Input overrides ───────────────────────────────────────────────────── */
+.stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+    background:#0d1021 !important;
+    border:1px solid rgba(139,92,246,.2) !important;
+    border-radius:10px !important;
+    color:#e2e8f0 !important;
+    font-family:'Inter',sans-serif !important;
+    font-size:.9rem !important;
 }
-.badge-success { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
-.badge-warning { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
-.badge-info    { background: rgba(99,102,241,0.15);  color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+.stTextInput input:focus { border-color:#7c3aed !important; box-shadow:0 0 0 3px rgba(124,58,237,.15) !important; }
+.stSlider [data-baseweb="slider"] { margin-top:8px; }
 
-/* ── Input override ── */
-.stTextInput input, .stSelectbox select {
-    background: #111827 !important;
-    border: 1px solid rgba(99,102,241,0.3) !important;
-    border-radius: 10px !important;
-    color: #e2e8f0 !important;
-    font-family: 'Inter', sans-serif !important;
-}
-.stTextInput input:focus {
-    border-color: #6366f1 !important;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
-}
-
-/* ── Button override ── */
+/* ─── Button overrides ───────────────────────────────────────────────────── */
 .stButton > button {
-    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.6rem 1.5rem !important;
-    font-weight: 600 !important;
-    font-size: 0.9rem !important;
-    transition: all 0.2s !important;
-    font-family: 'Inter', sans-serif !important;
+    background:linear-gradient(135deg,#7c3aed,#5b21b6) !important;
+    color:#fff !important;border:none !important;
+    border-radius:11px !important;
+    padding:.6rem 1.6rem !important;
+    font-weight:700 !important;font-size:.88rem !important;
+    letter-spacing:.01em;
+    transition:all .2s !important;
+    font-family:'Inter',sans-serif !important;
 }
 .stButton > button:hover {
-    background: linear-gradient(135deg, #4338ca, #4f46e5) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 24px rgba(99,102,241,0.4) !important;
+    background:linear-gradient(135deg,#6d28d9,#4c1d95) !important;
+    transform:translateY(-1px) !important;
+    box-shadow:0 8px 24px rgba(124,58,237,.35) !important;
 }
 
-/* ── Code block override ── */
-.stCode, code {
-    background: #0d1117 !important;
-    border: 1px solid rgba(99,102,241,0.2) !important;
-    border-radius: 8px !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    color: #a5b4fc !important;
-}
-
-/* ── Divider ── */
-.fancy-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(99,102,241,0.4), transparent);
-    margin: 1.5rem 0;
-}
-
-/* ── Animations ── */
-@keyframes pulse {
-    0%, 100% { box-shadow: 0 0 24px rgba(99,102,241,0.5); }
-    50% { box-shadow: 0 0 40px rgba(99,102,241,0.8); }
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-in { animation: fadeIn 0.4s ease forwards; }
-
-/* ── Metric override ── */
+/* ─── Metric overrides ───────────────────────────────────────────────────── */
 [data-testid="stMetric"] {
-    background: linear-gradient(135deg, #111827, #1a2234);
-    border: 1px solid rgba(99,102,241,0.2);
-    border-radius: 12px;
-    padding: 1rem !important;
+    background:#0d1021;
+    border:1px solid rgba(139,92,246,.12);
+    border-radius:14px;
+    padding:18px 20px !important;
 }
-[data-testid="stMetricValue"] { color: #a5b4fc !important; font-weight: 700; }
-[data-testid="stMetricLabel"] { color: #64748b !important; font-size: 0.8rem !important; }
+[data-testid="stMetricValue"] { color:#a78bfa !important; font-weight:800; }
+[data-testid="stMetricLabel"] { color:#374151 !important; font-size:.72rem !important; text-transform:uppercase;letter-spacing:.08em; }
 
-/* ── Info / warning override ── */
-.stAlert {
-    border-radius: 12px !important;
-    border: none !important;
-    background: rgba(17,24,39,0.8) !important;
-}
+/* ─── Alerts ─────────────────────────────────────────────────────────────── */
+.stAlert { border-radius:12px !important; border-left-width:3px !important; }
+div[data-testid="stInfo"] { background:rgba(139,92,246,.08) !important; border-color:#7c3aed !important; }
+div[data-testid="stWarning"] { background:rgba(245,158,11,.08) !important; border-color:#f59e0b !important; }
+div[data-testid="stSuccess"] { background:rgba(16,185,129,.08) !important; border-color:#10b981 !important; }
+div[data-testid="stError"] { background:rgba(239,68,68,.08) !important; border-color:#ef4444 !important; }
 
-/* ── Sidebar logo ── */
-.sidebar-logo {
-    padding: 1rem 0 1.5rem;
-    text-align: center;
+/* ─── Code ───────────────────────────────────────────────────────────────── */
+code, .stCode { background:#0a0d1f !important; border:1px solid rgba(139,92,246,.18) !important; border-radius:8px !important; color:#c4b5fd !important; font-family:'JetBrains Mono',monospace !important; }
+
+/* ─── Toggle ─────────────────────────────────────────────────────────────── */
+.stToggle span { font-size:.85rem !important; color:#94a3b8 !important; }
+
+/* ─── Divider ─────────────────────────────────────────────────────────────── */
+.vdiv { height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,.3),transparent);margin:20px 0; }
+
+/* ─── Paper card (literature) ────────────────────────────────────────────── */
+.paper-card {
+    background:#0d1021;
+    border:1px solid rgba(139,92,246,.1);
+    border-radius:14px;
+    padding:18px 20px;
+    margin-bottom:10px;
+    transition:all .2s;
 }
-.sidebar-logo-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #818cf8, #10b981);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.sidebar-logo-sub {
-    font-size: 0.7rem;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 2px;
-}
-.nav-item {
-    padding: 10px 16px;
-    border-radius: 10px;
-    margin-bottom: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #64748b;
-    transition: all 0.2s;
-}
-.nav-item.active {
-    background: rgba(99,102,241,0.15);
-    color: #a5b4fc;
-    border-left: 3px solid #6366f1;
-}
+.paper-card:hover { border-color:rgba(139,92,246,.3); box-shadow:0 4px 20px rgba(124,58,237,.1); }
+.paper-title { font-weight:700;font-size:.95rem;color:#c4b5fd;margin-bottom:4px; }
+.paper-meta { font-size:.74rem;color:#374151;margin-bottom:8px; }
+.paper-snippet { font-size:.82rem;color:#64748b;line-height:1.55; }
+
+/* ─── Animate in ─────────────────────────────────────────────────────────── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp .35s ease forwards; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Sidebar ────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# SIDEBAR NAV (icon rail)
+# ════════════════════════════════════════════════════════════════════════════
+PAGES = [
+    ("🧪", "Discovery Studio"),
+    ("🌳", "Agent Pipeline"),
+    ("📚", "Literature"),
+    ("📄", "Paper Viewer"),
+    ("💰", "Cost Analytics"),
+    ("📊", "Benchmark"),
+]
+
 with st.sidebar:
     st.markdown("""
-    <div class="sidebar-logo">
-        <div style="font-size:2.5rem">🔬</div>
-        <div class="sidebar-logo-title">AutoScientist AI</div>
-        <div class="sidebar-logo-sub">Discovery Dashboard</div>
-    </div>
-    <div class="fancy-divider"></div>
+    <div class="nav-logo">🔬</div>
+    <div class="nav-divider"></div>
     """, unsafe_allow_html=True)
 
-    page = st.radio(
-        "Navigation",
-        ["🧪  Discovery Studio", "🌳  Agent Pipeline", "📚  Literature & Citations",
-         "📄  Paper Viewer", "💰  Cost Analytics", "📊  Holdout Benchmark"],
+    page_idx = st.radio(
+        "nav",
+        options=list(range(len(PAGES))),
+        format_func=lambda i: PAGES[i][0],
         label_visibility="collapsed",
     )
-    page = page.split("  ", 1)[1]  # strip emoji prefix
 
-    st.markdown('<div class="fancy-divider"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div style="padding: 0 8px;">
-        <div style="font-size:0.7rem; color:#374151; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;">System Status</div>
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            <div style="width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></div>
-            <span style="font-size:0.8rem;color:#64748b;">Pipeline Ready</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            <div style="width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></div>
-            <span style="font-size:0.8rem;color:#64748b;">Vector DB Online</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <div style="width:7px;height:7px;border-radius:50%;background:#f59e0b;box-shadow:0 0 6px #f59e0b;"></div>
-            <span style="font-size:0.8rem;color:#64748b;">LaTeX (stub mode)</span>
+page = PAGES[page_idx][1]
+
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE HEADER HELPER
+# ════════════════════════════════════════════════════════════════════════════
+def page_header(icon, title, sub=""):
+    st.markdown(f"""
+    <div class="pg-header fade-up">
+        <div class="pg-icon">{icon}</div>
+        <div>
+            <div class="pg-title">{title}</div>
+            {"<div class='pg-sub'>"+sub+"</div>" if sub else ""}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-# ─── Hero Banner (shown on all pages) ───────────────────────────────────────
-PAGE_META = {
-    "Discovery Studio":        ("🧪", "Discovery Studio",       "Configure and launch your autonomous scientific research pipeline"),
-    "Agent Pipeline":          ("🌳", "Agent Pipeline",          "Track real-time agent progress through the discovery workflow"),
-    "Literature & Citations":  ("📚", "Literature & Citations",  "Search and explore papers indexed by the retrieval agent"),
-    "Paper Viewer":            ("📄", "Paper Viewer",            "Preview and download the AI-synthesized research paper"),
-    "Cost Analytics":          ("💰", "Cost Analytics",          "LLM cost breakdown, token usage, and node latency metrics"),
-    "Holdout Benchmark":       ("📊", "Holdout Benchmark",       "Agent vs. human scoring across 9 curated research papers"),
-}
-icon, title, subtitle = PAGE_META[page]
-st.markdown(f"""
-<div class="hero-banner animate-in">
-    <div class="hero-badge">AutoScientist AI · Week 4</div>
-    <h1 class="hero-title">{icon}&nbsp; {title}</h1>
-    <p class="hero-subtitle">{subtitle}</p>
-</div>
-""", unsafe_allow_html=True)
+def divider():
+    st.markdown('<div class="vdiv"></div>', unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Discovery Studio
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: DISCOVERY STUDIO
+# ════════════════════════════════════════════════════════════════════════════
 if page == "Discovery Studio":
+    page_header("🧪", "Discovery Studio")
 
-    col_left, col_right = st.columns([3, 2], gap="large")
+    left, right = st.columns([3, 2], gap="large")
 
-    with col_left:
-        st.markdown('<p class="section-header">Launch a Research Run</p>', unsafe_allow_html=True)
-        st.markdown('<p class="section-sub">Enter a topic and let the agent autonomously discover, hypothesize, and validate.</p>', unsafe_allow_html=True)
-
-        topic = st.text_input("🔭 Research Topic", placeholder="e.g. Sparse Transformers, CRISPR in cancer therapy…",
-                              label_visibility="collapsed")
-
+    with left:
+        topic = st.text_input(
+            "Topic",
+            placeholder="e.g. Sparse Transformers for genomics, CRISPR gene editing…",
+            label_visibility="collapsed",
+        )
         c1, c2 = st.columns(2)
         with c1:
-            enable_critic = st.toggle("🎓 Enable Statistical Critic", value=True)
+            enable_critic = st.toggle("Statistical Critic", value=True)
         with c2:
-            synth_latex = st.toggle("📝 Synthesize LaTeX Paper", value=False)
+            synth_latex  = st.toggle("Synthesize Paper", value=False)
 
-        if "run_state" not in st.session_state:
-            st.session_state["run_state"] = {}
-            st.session_state["active_agent"] = None
+        run_btn = st.button("⚡ Run Discovery", use_container_width=True)
 
-        if st.button("🚀 Start Discovery", use_container_width=True):
+        if run_btn:
             if not topic.strip():
-                st.warning("⚠️ Please enter a research topic first.")
+                st.warning("Enter a research topic first.")
             else:
+                if "run_state" not in st.session_state:
+                    st.session_state.run_state = {}
+                    st.session_state.active_agent = None
                 try:
                     from src.orchestrator import build_orchestrator
                     graph = build_orchestrator(enable_critic=enable_critic)
-                    run_state = {}
-
-                    with st.status("🔬 Discovery pipeline running…", expanded=True) as status:
+                    with st.status("Running pipeline…", expanded=True) as status:
                         for event in graph.stream(
                             {"research_topic": topic.strip(), "enable_critic": enable_critic},
                             stream_mode="updates",
                         ):
                             for node_name, update in event.items():
-                                run_state.update(update)
-                                agent = node_name.replace("_", " ").title()
-                                st.session_state["active_agent"] = agent
-                                status.write(f"**▶ {agent}** running…")
-                                for log in update.get("logs", []):
-                                    status.write(f"  `{log}`")
-                                st.session_state["run_state"] = run_state.copy()
-                        status.update(label="✅ Discovery complete!", state="complete")
+                                st.session_state.run_state.update(update)
+                                st.session_state.active_agent = node_name.replace("_"," ").title()
+                                status.write(f"**{st.session_state.active_agent}**")
+                        status.update(label="✅ Complete", state="complete")
                 except Exception as exc:
-                    st.error(f"Pipeline error: {exc}")
+                    st.error(f"{exc}")
 
-    with col_right:
-        st.markdown('<p class="section-header">Run Status</p>', unsafe_allow_html=True)
-        run = st.session_state["run_state"]
-        active = st.session_state.get("active_agent") or "Waiting…"
-        status_val = run.get("execution_status", "Not started")
-        retries = run.get("retry_count", 0)
-        verdict = run.get("critic_verdict", "—")
+    with right:
+        run = getattr(st.session_state, "run_state", {})
+        active = getattr(st.session_state, "active_agent", None) or "—"
+        status_val  = run.get("execution_status", "Idle")
+        retries     = run.get("retry_count", 0)
+        verdict     = run.get("critic_verdict", "—")
+        v_color     = "#34d399" if verdict == "ACCEPTED" else "#fbbf24"
 
         st.markdown(f"""
-        <div class="glass-card">
-            <div style="margin-bottom:1rem;">
-                <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Active Agent</div>
-                <div style="font-size:1.1rem;font-weight:600;color:#a5b4fc;margin-top:4px;">{active}</div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="gcard fade-up">
+            <div class="gcard-title">Run Monitor</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div>
-                    <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Status</div>
-                    <div style="font-size:0.95rem;font-weight:600;color:#e2e8f0;margin-top:4px;">{status_val}</div>
+                    <div class="stat-label">Active Agent</div>
+                    <div style="font-weight:700;color:#a78bfa;font-size:.95rem;">{active}</div>
                 </div>
                 <div>
-                    <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Retries</div>
-                    <div style="font-size:0.95rem;font-weight:600;color:#e2e8f0;margin-top:4px;">{retries}</div>
+                    <div class="stat-label">Status</div>
+                    <div style="font-weight:700;color:#e2e8f0;font-size:.95rem;">{status_val}</div>
                 </div>
                 <div>
-                    <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Critic Verdict</div>
-                    <div style="font-size:0.95rem;font-weight:600;color:{'#10b981' if verdict=='ACCEPTED' else '#f59e0b'};margin-top:4px;">{verdict}</div>
+                    <div class="stat-label">Retries</div>
+                    <div style="font-weight:700;color:#e2e8f0;font-size:.95rem;">{retries}</div>
+                </div>
+                <div>
+                    <div class="stat-label">Critic</div>
+                    <div style="font-weight:700;color:{v_color};font-size:.95rem;">{verdict}</div>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         if run.get("selected_hypothesis"):
-            st.markdown("""<div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Hypothesis</div>""", unsafe_allow_html=True)
-            st.markdown(f"""<div class="glass-card" style="font-style:italic;color:#c7d2fe;font-size:0.9rem;">"{run['selected_hypothesis']}"</div>""", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="gcard fade-up" style="border-color:rgba(124,58,237,.25);">
+                <div class="stat-label" style="margin-bottom:8px;">Hypothesis</div>
+                <div style="font-style:italic;color:#c4b5fd;font-size:.88rem;line-height:1.6;">"{run['selected_hypothesis']}"</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         if run.get("execution_result"):
-            with st.expander("📋 Execution Output"):
+            with st.expander("Execution Output"):
                 st.code(run["execution_result"], language="text")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Agent Pipeline
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: AGENT PIPELINE
+# ════════════════════════════════════════════════════════════════════════════
 elif page == "Agent Pipeline":
+    page_header("🌳", "Agent Pipeline")
 
-    active_agent = st.session_state.get("active_agent")
+    active_agent = getattr(st.session_state, "active_agent", None)
 
-    AGENT_META = {
-        "Literature Reviewer":  ("📚", "Retrieves & indexes relevant papers from arXiv and semantic sources"),
-        "Hypothesis Generator": ("💡", "Formulates novel, testable scientific hypotheses"),
-        "Code Executor":        ("⚙️", "Writes and executes experiments in a sandboxed environment"),
-        "Debugger Node":        ("🔧", "Detects and fixes failures in generated code automatically"),
-        "Critic Node":          ("🎓", "Validates results with p-value & Cohen's d statistical checks"),
-        "LaTeX Synthesizer":    ("📝", "Compiles findings into a publication-ready research paper"),
+    META = {
+        "Literature Reviewer":  ("📚", "Retrieves & indexes relevant papers"),
+        "Hypothesis Generator": ("💡", "Formulates novel, testable hypotheses"),
+        "Code Executor":        ("⚙️", "Writes & runs sandboxed experiments"),
+        "Debugger Node":        ("🔧", "Auto-fixes code failures"),
+        "Critic Node":          ("🎓", "Statistical validation — p-value & Cohen's d"),
+        "LaTeX Synthesizer":    ("📝", "Compiles publication-ready manuscript"),
     }
-
-    st.markdown("""
-    <style>
-    .pipeline-step {
-        background: linear-gradient(135deg, #111827, #1a2234);
-        border: 1px solid rgba(99,102,241,0.15);
-        border-radius: 14px;
-        padding: 1.2rem 1.5rem;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 1.2rem;
-        transition: all 0.3s;
-        position: relative;
-        overflow: hidden;
-    }
-    .pipeline-step.step-active {
-        border-color: rgba(99,102,241,0.6);
-        background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(17,24,39,1));
-        box-shadow: 0 0 32px rgba(99,102,241,0.2);
-    }
-    .pipeline-step.step-active::before {
-        content:'';
-        position:absolute;
-        left:0;top:0;bottom:0;
-        width:4px;
-        background: linear-gradient(180deg, #818cf8, #10b981);
-        border-radius:14px 0 0 14px;
-    }
-    .step-icon { font-size: 1.8rem; min-width: 40px; text-align:center; }
-    .step-content { flex: 1; }
-    .step-name { font-weight: 700; font-size: 1rem; color: #e2e8f0; }
-    .step-name.active-name { color: #a5b4fc; }
-    .step-desc { font-size: 0.8rem; color: #475569; margin-top: 2px; }
-    .step-connector { text-align: center; color: rgba(99,102,241,0.3); font-size: 1.2rem; margin: -4px 0; }
-    </style>
-    """, unsafe_allow_html=True)
 
     if not active_agent:
         st.markdown("""
-        <div class="glass-card" style="text-align:center;padding:2rem;">
-            <div style="font-size:2.5rem;margin-bottom:0.75rem;">🚀</div>
-            <div style="font-size:1rem;font-weight:600;color:#64748b;">No pipeline running yet</div>
-            <div style="font-size:0.85rem;color:#374151;margin-top:4px;">Go to Discovery Studio and start a run to see agents activate in real-time</div>
+        <div class="gcard" style="text-align:center;padding:3rem;color:#374151;">
+            <div style="font-size:2rem;margin-bottom:.5rem;">🚀</div>
+            Start a run in Discovery Studio to watch agents activate here.
         </div>
         """, unsafe_allow_html=True)
 
     for i, agent in enumerate(AGENTS):
-        emoji, desc = AGENT_META[agent]
+        emoji, desc = META[agent]
         is_active = agent == active_agent
-        active_cls = "step-active" if is_active else ""
-        name_cls = "active-name" if is_active else ""
-        badge = '<span class="status-badge badge-info" style="float:right;margin-top:-2px;">● Live</span>' if is_active else ""
+        a_cls  = "active" if is_active else ""
+        n_cls  = "a" if is_active else ""
+        dot    = '<div class="live-dot"></div>' if is_active else ""
         st.markdown(f"""
-        <div class="pipeline-step {active_cls}">
-            <div class="step-icon">{emoji}</div>
-            <div class="step-content">
-                <div class="step-name {name_cls}">{agent} {badge}</div>
-                <div class="step-desc">{desc}</div>
+        <div class="pipe-step {a_cls}">
+            <div class="pipe-icon">{emoji}</div>
+            <div style="flex:1;">
+                <div class="pipe-name {n_cls}">{agent}</div>
+                <div class="pipe-desc">{desc}</div>
             </div>
+            {dot}
         </div>
-        {"<div class='step-connector'>↓</div>" if i < len(AGENTS)-1 else ""}
         """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Literature & Citations
-# ═══════════════════════════════════════════════════════════════════════════════
-elif page == "Literature & Citations":
 
-    col_a, col_b = st.columns([3, 1], gap="medium")
-    with col_a:
-        query = st.text_input("🔍 Search Query", placeholder="e.g. attention mechanisms, sparse neural networks…",
-                              label_visibility="collapsed")
-    with col_b:
-        top_k = st.number_input("Top K", min_value=1, max_value=20, value=5, label_visibility="collapsed")
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: LITERATURE
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "Literature":
+    page_header("📚", "Literature Search")
 
-    min_score = st.slider("Minimum Similarity Score", 0.0, 0.5, 0.0, 0.05,
-                          format="%.2f")
+    c1, c2 = st.columns([5, 1], gap="small")
+    with c1:
+        query = st.text_input("q", placeholder="Search indexed papers…", label_visibility="collapsed")
+    with c2:
+        top_k = st.number_input("K", min_value=1, max_value=20, value=5, label_visibility="collapsed")
 
-    if st.button("🔍 Search Papers", use_container_width=False, disabled=not (query or "").strip()):
+    min_score = st.slider("Min similarity", 0.0, 0.5, 0.0, 0.05, format="%.2f")
+
+    if st.button("Search", disabled=not (query or "").strip()):
         try:
             from src.rag.retriever import get_relevant_literature
-            with st.spinner("Searching vector database…"):
+            with st.spinner("Searching…"):
                 papers = get_relevant_literature(query, top_k=top_k, min_score=min_score)
 
             if not papers:
-                st.markdown("""<div class="glass-card" style="text-align:center;color:#64748b;">No matching papers found. Try a broader query.</div>""", unsafe_allow_html=True)
+                st.info("No results. Try a broader query.")
             else:
-                st.markdown(f'<p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Found <strong style="color:#a5b4fc">{len(papers)}</strong> papers</p>', unsafe_allow_html=True)
-                for paper in papers:
-                    title = paper.get("title") or paper.get("paper_id", "Untitled")
-                    authors = ", ".join(paper.get("authors") or []) or "Authors unavailable"
-                    year = paper.get("year") or "Year unknown"
-                    source = paper.get("source", "unknown")
-                    snippet = paper.get("snippet") or "No snippet available."
-                    sim = paper.get("similarity", "—")
-                    rank = paper.get("rank", "")
-                    url = paper.get("url", "")
+                st.markdown(f'<p style="color:#374151;font-size:.8rem;margin-bottom:12px;">{len(papers)} result{"s" if len(papers)!=1 else ""}</p>', unsafe_allow_html=True)
+                for p in papers:
+                    title   = p.get("title") or p.get("paper_id", "Untitled")
+                    authors = ", ".join(p.get("authors") or []) or "Unknown authors"
+                    year    = p.get("year", "")
+                    source  = p.get("source", "")
+                    snippet = p.get("snippet", "")
+                    sim     = p.get("similarity", "")
+                    url     = p.get("url", "")
+                    sim_str = f"{float(sim)*100:.0f}%" if isinstance(sim,(float,int)) else ""
 
-                    sim_pct = f"{float(sim)*100:.1f}%" if isinstance(sim, (float, int)) else str(sim)
-
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="glass-card" style="margin-bottom:0.75rem;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
-                                <div style="flex:1;">
-                                    <div style="font-weight:700;font-size:1rem;color:#c7d2fe;margin-bottom:4px;">
-                                        {rank}{"." if rank else ""} {title}
-                                    </div>
-                                    <div style="font-size:0.78rem;color:#475569;margin-bottom:0.75rem;">
-                                        {authors} · {year} · <span style="color:#374151">{source}</span>
-                                    </div>
-                                    <div style="font-size:0.85rem;color:#94a3b8;line-height:1.5;">{snippet[:300]}{'…' if len(snippet)>300 else ''}</div>
-                                </div>
-                                <div style="text-align:right;min-width:80px;">
-                                    <div class="status-badge badge-info">{sim_pct}</div>
-                                </div>
-                            </div>
+                    st.markdown(f"""
+                    <div class="paper-card fade-up">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div class="paper-title">{title}</div>
+                            {"<span class='pill pill-i'>"+sim_str+"</span>" if sim_str else ""}
                         </div>
-                        """, unsafe_allow_html=True)
-                        if url:
-                            st.link_button("🔗 Open Paper", url)
-        except Exception as exc:
-            st.error(f"Search failed: {exc}")
+                        <div class="paper-meta">{authors}{" · " + str(year) if year else ""}{" · " + source if source else ""}</div>
+                        <div class="paper-snippet">{snippet[:280]}{"…" if len(snippet)>280 else ""}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if url:
+                        st.link_button("Open →", url)
+        except Exception as e:
+            st.error(str(e))
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Paper Viewer
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: PAPER VIEWER
+# ════════════════════════════════════════════════════════════════════════════
 elif page == "Paper Viewer":
+    page_header("📄", "Paper Viewer")
     render_paper_viewer()
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Cost Analytics
-# ═══════════════════════════════════════════════════════════════════════════════
-elif page == "Cost Analytics":
-    try:
-        from components.cost_analytics import render_cost_analytics
 
-        # Style the plotly charts dark
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: COST ANALYTICS
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "Cost Analytics":
+    page_header("💰", "Cost Analytics")
+    try:
         import plotly.io as pio
         pio.templates.default = "plotly_dark"
-
+        from components.cost_analytics import render_cost_analytics
         render_cost_analytics()
-    except Exception as exc:
-        st.error(f"Failed to load cost analytics: {exc}")
+    except Exception as e:
+        st.error(str(e))
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE: Holdout Benchmark
-# ═══════════════════════════════════════════════════════════════════════════════
-elif page == "Holdout Benchmark":
+
+# ════════════════════════════════════════════════════════════════════════════
+# PAGE: BENCHMARK
+# ════════════════════════════════════════════════════════════════════════════
+elif page == "Benchmark":
+    page_header("📊", "Holdout Benchmark")
 
     st.markdown("""
-    <div class="glass-card" style="margin-bottom:1.5rem;">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;text-align:center;">
-            <div>
-                <div style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">9</div>
-                <div style="font-size:0.75rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Holdout Papers</div>
-            </div>
-            <div>
-                <div style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">4</div>
-                <div style="font-size:0.75rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Scoring Dimensions</div>
-            </div>
-            <div>
-                <div style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">3</div>
-                <div style="font-size:0.75rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Domains</div>
-            </div>
-            <div>
-                <div style="font-size:2rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">10</div>
-                <div style="font-size:0.75rem;color:#475569;text-transform:uppercase;letter-spacing:.1em;">Max Score</div>
-            </div>
+    <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-card">
+            <div class="stat-label">Papers</div>
+            <div class="stat-val">9</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Dimensions</div>
+            <div class="stat-val">4</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Domains</div>
+            <div class="stat-val">3</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Max Score</div>
+            <div class="stat-val">10</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-        <span class="status-badge badge-info">🤖 AI / ML</span>
-        <span class="status-badge badge-success">🧬 Computational Biology</span>
-        <span class="status-badge badge-warning">⚛️ Physics</span>
-        <span class="status-badge badge-info">📅 2024 – 2026</span>
+    <div style="display:flex;gap:8px;margin-bottom:24px;">
+        <span class="pill pill-i">🤖 AI / ML</span>
+        <span class="pill pill-v">🧬 Comp. Biology</span>
+        <span class="pill pill-w">⚛️ Physics</span>
     </div>
     """, unsafe_allow_html=True)
 
-    radar_path = Path("docs/figures/benchmark_radar.svg")
-    if radar_path.exists():
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image(str(radar_path), caption="Agent vs. Human — 4-Dimension Radar Chart")
+    radar = Path("docs/figures/benchmark_radar.svg")
+    if radar.exists():
+        _, mid, _ = st.columns([1, 2, 1])
+        with mid:
+            st.image(str(radar))
     else:
-        st.markdown("""<div class="glass-card" style="text-align:center;color:#475569;">
-            Radar chart not found at <code>docs/figures/benchmark_radar.svg</code>
-        </div>""", unsafe_allow_html=True)
+        st.markdown('<div class="gcard" style="text-align:center;color:#374151;">Radar chart not found at <code>docs/figures/benchmark_radar.svg</code></div>', unsafe_allow_html=True)
 
-    report_path = Path("docs/evaluation_benchmark_report.md")
-    if report_path.exists():
-        st.markdown('<div class="fancy-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<p class="section-header">Evaluation Report</p>', unsafe_allow_html=True)
-        st.markdown(report_path.read_text(encoding="utf-8"))
+    report = Path("docs/evaluation_benchmark_report.md")
+    if report.exists():
+        divider()
+        st.markdown(report.read_text(encoding="utf-8"))
