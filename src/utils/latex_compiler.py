@@ -25,24 +25,18 @@ def compile_latex_to_pdf(
     pdf_path: Optional[str] = None,
     timeout_sec: int = 30,
 ) -> bool:
-    """
-    Attempts to compile a LaTeX .tex file into a PDF.
+    """Compile LaTeX to PDF and always generate an HTML companion."""
 
-    Args:
-        tex_path: Absolute or relative path to source .tex file.
-        pdf_path: Target .pdf path (defaults to same stem as tex_path).
-        timeout_sec: Timeout for compiler execution.
-
-    Returns:
-        bool: True if pdflatex generated the target PDF successfully.
-    """
     tex_file = Path(tex_path).resolve()
+
     if not tex_file.exists():
         raise FileNotFoundError(f"LaTeX source file not found: {tex_path}")
 
     target_pdf = Path(pdf_path).resolve() if pdf_path else tex_file.with_suffix(".pdf")
     output_dir = target_pdf.parent
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    html_path = output_dir / f"{tex_file.stem}.html"
 
     if is_pdflatex_available():
         try:
@@ -52,6 +46,7 @@ def compile_latex_to_pdf(
                 f"-output-directory={output_dir}",
                 str(tex_file),
             ]
+
             res = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -59,7 +54,7 @@ def compile_latex_to_pdf(
                 timeout=timeout_sec,
                 cwd=str(tex_file.parent),
             )
-            # Second pass for references / citations if needed
+
             if res.returncode == 0:
                 subprocess.run(
                     cmd,
@@ -68,23 +63,33 @@ def compile_latex_to_pdf(
                     timeout=timeout_sec,
                     cwd=str(tex_file.parent),
                 )
+
                 generated_pdf = output_dir / f"{tex_file.stem}.pdf"
+
                 if generated_pdf.exists() and generated_pdf != target_pdf:
                     shutil.move(str(generated_pdf), str(target_pdf))
-                return target_pdf.exists()
-        except (subprocess.TimeoutExpired, Exception):
+
+                # Always generate HTML companion
+                generate_html_fallback(tex_file, html_path)
+
+                if target_pdf.exists():
+                    return True
+
+        except Exception:
             pass
 
-    # Graceful fallback: Generate HTML with MathJax + simulated PDF draft
-    generate_html_fallback(tex_file, output_dir / f"{tex_file.stem}.html")
+    # Fallback when PDF compilation fails
+    generate_html_fallback(tex_file, html_path)
+
     if not target_pdf.exists():
-        # Write minimal valid PDF header for file-type compatibility
         latex_text = tex_file.read_text(encoding="utf-8", errors="ignore")
-        simulated_bytes = b"%PDF-1.4 simulated publication draft\n" + latex_text.encode("utf-8")
+        simulated_bytes = (
+            b"%PDF-1.4 simulated publication draft\n"
+            + latex_text.encode("utf-8")
+        )
         target_pdf.write_bytes(simulated_bytes)
 
     return False
-
 
 def generate_html_fallback(tex_file: Path, html_path: Path) -> Path:
     """Creates a browser-viewable HTML document with MathJax math rendering."""
@@ -124,3 +129,97 @@ def generate_html_fallback(tex_file: Path, html_path: Path) -> Path:
 """
     html_path.write_text(html_content, encoding="utf-8")
     return html_path
+from dataclasses import dataclass
+
+
+def find_engine(name="pdflatex"):
+    """Return the executable path when the requested TeX engine exists."""
+    return shutil.which(name)
+
+
+@dataclass
+class CompileResult:
+    pdf_ok: bool
+    pdf_path: Optional[str]
+    fallback_files: list
+    engine: Optional[str]
+    message: str
+    errors: list
+
+
+def compile_with_fallback(tex_path, bib_path=None):
+    """
+    Safely compile a LaTeX source file.
+    Unlike the legacy compiler, this never creates a fake PDF.
+    """
+    tex_file = Path(tex_path).resolve()
+    if not tex_file.is_file():
+        raise FileNotFoundError(f"LaTeX source file not found: {tex_file}")
+
+    output_dir = tex_file.parent
+    target_pdf = tex_file.with_suffix(".pdf")
+    html_path = output_dir / f"{tex_file.stem}.html"
+    errors = []
+
+    # Remove an old output so a stale PDF cannot be reported as current.
+    if target_pdf.exists():
+        target_pdf.unlink()
+
+    engine_path = find_engine("pdflatex")
+
+    if engine_path:
+        command = [
+            engine_path,
+            "-interaction=nonstopmode",
+            "-halt-on-error",
+            f"-output-directory={output_dir}",
+            str(tex_file),
+        ]
+        try:
+            for _ in range(2):
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=str(tex_file.parent),
+                )
+                if result.returncode != 0:
+                    errors.append((result.stdout or "")[-3000:])
+                    errors.append((result.stderr or "")[-1000:])
+                    break
+
+            if target_pdf.is_file():
+                with target_pdf.open("rb") as handle:
+                    valid_pdf = handle.read(5) == b"%PDF-"
+                if valid_pdf:
+                    generate_html_fallback(tex_file, html_path)
+                    return CompileResult(
+                        pdf_ok=True,
+                        pdf_path=str(target_pdf),
+                        fallback_files=[str(html_path)],
+                        engine="pdflatex",
+                        message="PDF compiled successfully.",
+                        errors=errors,
+                    )
+
+        except Exception as exc:
+            errors.append(f"{type(exc).__name__}: {exc}")
+
+        # Do not leave an invalid or partial PDF behind.
+        if target_pdf.exists():
+            target_pdf.unlink()
+
+    else:
+        errors.append("pdflatex executable was not found.")
+
+    generate_html_fallback(tex_file, html_path)
+
+    return CompileResult(
+        pdf_ok=False,
+        pdf_path=None,
+        fallback_files=[str(html_path)],
+        engine=None,
+        message="PDF was not generated. HTML fallback is available.",
+        errors=errors,
+    )

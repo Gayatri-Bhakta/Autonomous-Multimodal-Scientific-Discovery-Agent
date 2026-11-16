@@ -107,7 +107,7 @@ def synthesize_manuscript(state: Dict[str, Any], template_text: str) -> str:
         clean_l = line.strip().lstrip("-").strip()
         if clean_l:
             critique_text += f"\\item {clean_l.replace('%', '\\%').replace('_', '\\_')}\n"
-    critique_text += "\\end{{itemize}}"
+    critique_text += "\\end{itemize}"
 
     conclusion_text = (
         f"The AutoScientist AI framework successfully investigated, simulated, and refereed {topic} "
@@ -179,3 +179,194 @@ def generate_latex_paper(
         "bib_path": str(bib_path),
         "status": "SUCCESS",
     }
+from dataclasses import dataclass
+import math
+
+
+class InputValidationError(ValueError):
+    """Invalid research paper input."""
+
+
+class SynthesizerConfigError(RuntimeError):
+    """Missing or unsupported synthesis configuration."""
+
+
+class SynthesizerError(RuntimeError):
+    """Paper synthesis failed."""
+
+
+@dataclass
+class SynthesisResult:
+    status: str
+    is_simulated: bool
+    sections: Dict[str, str]
+    warnings: List[str]
+    tex_path: str
+    bib_path: str
+
+
+class SynthesizerAgent:
+    """Frontend adapter that preserves the original Week 4 functions."""
+
+    def __init__(self, llm=None, use_env_llm=False):
+        self.llm = llm
+        self.use_env_llm = use_env_llm
+
+    @staticmethod
+    def _validate(data):
+        if not isinstance(data, dict) or not str(data.get("title", "")).strip():
+            raise InputValidationError("A paper title is required.")
+
+        results = data.get("results")
+        if not isinstance(results, list) or not results:
+            raise InputValidationError("At least one verified result is required.")
+
+        for index, row in enumerate(results, 1):
+            if not isinstance(row, dict):
+                raise InputValidationError(f"Result {index} must be a valid record.")
+
+            if not row.get("method") or not row.get("metric"):
+                raise InputValidationError(f"Result {index} needs a method and metric.")
+
+            for field in ("value", "std", "p_value"):
+                value = row.get(field)
+                if value is None:
+                    continue
+                try:
+                    number = float(value)
+                except (TypeError, ValueError):
+                    raise InputValidationError(f"Result {index}: {field} must be numeric.")
+                if not math.isfinite(number):
+                    raise InputValidationError(f"Result {index}: {field} must be finite.")
+                if field == "std" and number < 0:
+                    raise InputValidationError(f"Result {index}: std cannot be negative.")
+                if field == "p_value" and not 0 <= number <= 1:
+                    raise InputValidationError(f"Result {index}: p_value must be between 0 and 1.")
+
+            n = row.get("n")
+            if n is not None and (int(n) != float(n) or int(n) < 1):
+                raise InputValidationError(f"Result {index}: n must be a positive integer.")
+
+    @staticmethod
+    def _escape(value):
+        replacements = {
+            "\\": r"\textbackslash{}",
+            "&": r"\&", "%": r"\%", "$": r"\$",
+            "#": r"\#", "_": r"\_", "{": r"\{",
+            "}": r"\}", "~": r"\textasciitilde{}",
+            "^": r"\textasciicircum{}",
+        }
+        return "".join(replacements.get(ch, ch) for ch in str(value))
+
+    def synthesize(self, data, output_dir, basename="generated_research_paper",
+                   require_llm=False):
+        try:
+            self._validate(data)
+
+            if require_llm:
+                raise SynthesizerConfigError(
+                    "The frontend LLM synthesis adapter is not connected. "
+                    "Disable LLM writing to generate a clearly marked placeholder draft."
+                )
+
+            out_dir = Path(output_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            safe_name = Path(basename).name
+            if not safe_name:
+                safe_name = "generated_research_paper"
+
+            tex_path = out_dir / f"{safe_name}.tex"
+            bib_path = out_dir / "references.bib"
+
+            papers = data.get("papers") or []
+            generate_bibtex(papers, bib_path)
+
+            title = self._escape(data["title"])
+            authors = data.get("authors") or []
+            author_text = ", ".join(
+                self._escape(a.get("name", ""))
+                for a in authors if isinstance(a, dict)
+            ) or "Author not provided"
+
+            simulated = bool(data.get("is_simulated", False))
+            result_lines = []
+            for row in data["results"]:
+                line = (
+                    f"{self._escape(row['method'])}: "
+                    f"{self._escape(row['metric'])} = "
+                    f"{self._escape(row['value'])}"
+                )
+                if row.get("std") is not None:
+                    line += f", SD = {self._escape(row['std'])}"
+                if row.get("n") is not None:
+                    line += f", n = {self._escape(row['n'])}"
+                if row.get("p_value") is not None:
+                    line += f", p = {self._escape(row['p_value'])}"
+                result_lines.append(r"\item " + line)
+
+            marker = "SIMULATED RESULTS" if simulated else "USER-REPORTED RESULTS"
+            sections = {
+                "Abstract": "NOT GENERATED: LLM prose generation was not enabled.",
+                "Introduction": "NOT GENERATED: LLM prose generation was not enabled.",
+                "Methodology": "NOT GENERATED: LLM prose generation was not enabled.",
+                "Results": marker + ": " + "; ".join(
+                    f"{r['method']} {r['metric']} {r['value']}" for r in data["results"]
+                ),
+                "Conclusion": "NOT GENERATED: LLM prose generation was not enabled.",
+            }
+
+            hypothesis = self._escape(data.get("hypothesis") or "Not provided.")
+            setup = self._escape(data.get("experimental_setup") or "Not provided.")
+            limitations = data.get("limitations") or []
+            limitation_items = "\n".join(
+                r"\item " + self._escape(item) for item in limitations
+            ) or r"\item Not provided."
+
+            tex = r"""\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\title{""" + title + r"""}
+\author{""" + author_text + r"""}
+\date{\today}
+\begin{document}
+\maketitle
+\begin{center}
+\textbf{""" + marker + r"""}
+\end{center}
+\section{Abstract}
+""" + self._escape(sections["Abstract"]) + r"""
+\section{Research Objective}
+""" + hypothesis + r"""
+\section{Experimental Setup}
+""" + setup + r"""
+\section{Results}
+\begin{itemize}
+""" + "\n".join(result_lines) + r"""
+\end{itemize}
+\section{Limitations}
+\begin{itemize}
+""" + limitation_items + r"""
+\end{itemize}
+\section{Conclusion}
+""" + self._escape(sections["Conclusion"]) + r"""
+\end{document}
+"""
+            tex_path.write_text(tex, encoding="utf-8")
+
+            return SynthesisResult(
+                status="placeholders_only",
+                is_simulated=simulated,
+                sections=sections,
+                warnings=[
+                    "LLM prose sections were not generated; placeholders are clearly marked."
+                ],
+                tex_path=str(tex_path),
+                bib_path=str(bib_path),
+            )
+
+        except (InputValidationError, SynthesizerConfigError):
+            raise
+        except Exception as exc:
+            raise SynthesizerError(str(exc)) from exc
