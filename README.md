@@ -6,7 +6,7 @@ Developed for **Zaalima Development Pvt. Ltd.** (Enterprise-Level Project | Data
 
 ---
 
-## 🚀 Key Capabilities (Weeks 1 – 3)
+## 🚀 Key Capabilities (Weeks 1 – 4 Final Delivery)
 
 ### 1. Automated Multimodal Literature Ingestion & RAG (Week 1 & 3)
 * **arXiv & PubMed API Scrapers:** Real-time ingestion pipelines extracting titles, abstracts, authors, and DOI metadata.
@@ -34,6 +34,17 @@ Developed for **Zaalima Development Pvt. Ltd.** (Enterprise-Level Project | Data
 ### 6. Two-Tier Context Memory Architecture (Week 3)
 * **Tier 1 (Working Context Window Diet):** Sliding-window log pruning under a **4,000 token ceiling** with lossless regex preservation of numerical benchmarks and $p$-values.
 * **Tier 2 (Long-Horizon Episodic Store):** Permanent disk persistence at `data/experiments/episodes.json` storing historical runs and distilling past *Lessons Learned* to maintain multi-day experimental coherence.
+
+### 7. Academic LaTeX Manuscript Synthesis (Week 4)
+* **Conference-Ready TeX Engine (`templates/paper_template.tex`):** Standard two-column layout with automated abstract, hypothesis quote, results table, referee critique, and BibTeX serialization.
+* **Resilient Multi-Engine Compiler (`src/utils/latex_compiler.py`):** Compiles source `.tex` into publication-ready PDF with automated MathJax HTML companion fallback.
+
+### 8. Live Supervisor Web Dashboard (Week 4)
+* **6-Page Streamlit Supervisor Interface (`dashboard/app.py`):** Includes Discovery Studio, Agent Logic Tree, Literature Explorer, Paper Viewer, Execution Cost Analytics, and Holdout Benchmark radar charts.
+
+### 9. Holdout Benchmark Evaluation & Token Economics (Week 4)
+* **Empirical Validation vs Human Preprints:** Graded across 9 papers (2024–2026 across AI, Bio, Physics), achieving composite **9.25 / 10** vs human peer average of **8.11 / 10**.
+* **Enterprise Token Economics:** Real-time token tracking per agent node via `src/utils/cost_tracker.py` with an average single-run cost of **$0.0408 – $0.0615 USD**.
 
 ---
 
@@ -78,7 +89,9 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── week1_integration_report.md     # Week 1 architecture & integration audit
 │   ├── mid_review_report.md            # Week 2 Mid-Review integration report
 │   ├── mid_review_deck.md              # Official 12-slide presentation deck & demo script
-│   └── week3_integration_report.md     # Week 3 multimodal & critic integration report
+│   ├── week3_integration_report.md     # Week 3 multimodal & critic integration report
+│   ├── FINAL_ARCHITECTURAL_REPORT.md   # Final enterprise architectural report (Month 1 Delivery)
+│   └── final_review_deck.md            # Official Month 1 presentation deck & live demo script
 ├── examples/
 │   ├── extract_sample_figures.py       # Standalone PDF figure extraction runner
 │   ├── generate_sample_hypotheses.py   # RAG-grounded hypothesis generator runner
@@ -131,6 +144,7 @@ Autonomous-Multimodal-Scientific-Discovery-Agent/
 │   ├── test_snapshot.py                # Incremental crawl snapshot tests
 │   ├── test_state.py                   # State management unit tests
 │   └── test_vector_db.py               # ChromaDB embeddings & distance tests
+├── main.py                             # Master CLI entrypoint & pipeline coordinator
 ├── requirements.txt                    # Project dependencies
 └── README.md
 ```

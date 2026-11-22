@@ -9,3 +9,49 @@ data/raw/
 venv/
 data/pdfs/
 data/extracted_figures/
+data/holdout_papers/pdfs/
+
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local secrets
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
+
+# Local backups and temporary files
+*.bak
+*.pre_frontend.bak
+*.patch
+*.diff
+*.zip
+
+# Generated runtime data
+data/vector_store/
+data/experiments/episodes.json
+output/cost_log.json
+
+# Generated research paper outputs
+output/generated_research_paper.html
+output/generated_research_paper.pdf
+output/generated_research_paper.aux
+output/generated_research_paper.log
+output/generated_research_paper.out
+
+
+# Generated literature review results
+data/papers/
+
+# Generated LaTeX source output
+output/generated_research_paper.tex
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Local frontend uploads and generated previews
+output/frontend/

@@ -1,4 +1,6 @@
 from typing import Any, Sequence
+import json
+import re
 import math
 import numpy as np
 
@@ -146,3 +148,19 @@ def validate_experiment(
         "n_baseline": int(len(baseline)),
         "n_treatment": int(len(experiment)),
     }
+
+
+def compute_statistics_from_output(output: str) -> dict[str, Any]:
+    match = re.search(
+        r"^RESULTS_JSON:\s*(\{.*\})\s*$",
+        output or "",
+        re.MULTILINE,
+    )
+    if not match:
+        return {}
+
+    try:
+        data = json.loads(match.group(1))
+        return validate_experiment(data["baseline"], data["treatment"])
+    except (ValueError, KeyError, TypeError):
+        return {}
